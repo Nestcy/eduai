@@ -1,11 +1,13 @@
-"""Study plan generation endpoint."""
+"""Study plan generation endpoint.
+
+Railway is stateless: it computes the plan and returns it. The frontend
+(Lovable, backed by Supabase) is the one that persists it to `study_plans`.
+"""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
-from app.api.deps import AuthenticatedStudent, get_current_student, get_db, get_settings
-from app.database.repository import StudentRepository
+from app.api.deps import AuthenticatedStudent, get_current_student, get_settings
 from app.graph.build_graph import build_graph
 from app.logging_config import logger
 from app.models.schemas import StudyPlanRequest, StudyPlanResponse
@@ -17,7 +19,6 @@ router = APIRouter(prefix="/study-plan", tags=["study-plan"])
 @router.post("", response_model=StudyPlanResponse)
 async def generate_study_plan(
     payload: StudyPlanRequest,
-    db: Session = Depends(get_db),
     student: AuthenticatedStudent = Depends(get_current_student),
 ):
     """Generate a prioritized revision schedule from self-reported performance data."""
@@ -30,7 +31,6 @@ async def generate_study_plan(
     )
 
     graph = build_graph(
-        db=db,
         upload_temp_dir=settings.upload_dir,
         exam_date_str=payload.exam_date,
         daily_minutes=payload.daily_minutes_available,
@@ -43,9 +43,5 @@ async def generate_study_plan(
 
     if not result.get("study_plan"):
         raise HTTPException(422, "; ".join(result.get("errors", ["Could not generate a plan"])))
-
-    StudentRepository.save_study_plan(
-        db, student.student_id, payload.subject, {"plan": [e.model_dump() for e in result["study_plan"]]}
-    )
 
     return StudyPlanResponse(student_id=student.student_id, plan=result["study_plan"])

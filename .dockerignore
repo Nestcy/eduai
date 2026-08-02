@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.env
+.git/
+.gitignore
+data/
+logs/
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+README.md
+railway.json

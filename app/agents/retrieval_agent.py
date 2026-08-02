@@ -8,15 +8,13 @@ and user-uploaded PDFs. Handles two sub-flows depending on `state.intent`:
 """
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
-
 from app.logging_config import logger
 from app.models.state import GraphState, Intent, RetrievedChunk
 from app.rag.ingestion import build_collection_name, ingest_pdf, retrieve
 from app.tools.exam_paper_tools import download_pdf, find_past_paper_urls
 
 
-async def retrieval_ingest_node(state: GraphState, db: Session, upload_temp_dir: str) -> dict:
+async def retrieval_ingest_node(state: GraphState, upload_temp_dir: str) -> dict:
     """Discover public past papers + ingest uploaded PDFs for the given scope."""
     if not all([state.country, state.curriculum_board, state.grade, state.subject]):
         return {"errors": state.errors + ["Retrieval ingest missing curriculum scope"]}
@@ -34,7 +32,7 @@ async def retrieval_ingest_node(state: GraphState, db: Session, upload_temp_dir:
         for url in urls:
             local_path = await download_pdf(url, upload_temp_dir)
             if local_path:
-                total_chunks += ingest_pdf(local_path, collection, db, source_type="web")
+                total_chunks += ingest_pdf(local_path, collection, extra_metadata={"source_type": "web"})
                 ingested_files.append(local_path)
     except Exception as exc:
         logger.warning(f"Past paper discovery/ingestion failed: {exc}")
@@ -42,7 +40,7 @@ async def retrieval_ingest_node(state: GraphState, db: Session, upload_temp_dir:
     # 2. User-uploaded PDFs
     for path in state.ingest_file_paths:
         try:
-            total_chunks += ingest_pdf(path, collection, db, source_type="upload")
+            total_chunks += ingest_pdf(path, collection, extra_metadata={"source_type": "upload"})
             ingested_files.append(path)
         except Exception as exc:
             logger.warning(f"Failed to ingest uploaded file {path}: {exc}")

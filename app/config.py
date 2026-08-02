@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # LLM
-    groq_api_key: str
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_api_key: str  # required, no default — must be set via env
+    groq_model: str  # required, no default — must be set via env (e.g. GROQ_MODEL=llama-3.3-70b-versatile)
     groq_temperature: float = 0.2
 
     # Embeddings / RAG
@@ -26,10 +26,14 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 6
 
     # Supabase / Postgres
-    supabase_url: str = ""
-    supabase_service_key: str = ""
-    supabase_db_url: str = ""
-    supabase_jwt_secret: str = ""  # Project Settings -> API -> JWT Secret
+    # Supabase — Railway is now a stateless AI service. It does NOT hold
+    # database credentials; the frontend (Lovable) owns all reads/writes to
+    # Supabase Postgres. Railway only needs enough to verify the bearer
+    # token a logged-in student sends, via Supabase's public JWKS endpoint
+    # (no shared secret required).
+    supabase_jwks_url: str  # e.g. https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json
+    supabase_issuer: str  # e.g. https://<project-ref>.supabase.co/auth/v1
+    supabase_audience: str = "authenticated"
 
     # MCP
     mcp_brave_search_cmd: str = ""

@@ -7,9 +7,8 @@ import os
 import shutil
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from sqlalchemy.orm import Session
 
-from app.api.deps import AuthenticatedStudent, get_current_student, get_db, get_settings
+from app.api.deps import AuthenticatedStudent, get_current_student, get_settings
 from app.graph.build_graph import build_graph
 from app.logging_config import logger
 from app.models.schemas import IngestResponse
@@ -26,7 +25,6 @@ async def ingest_documents(
     grade: str = Form(...),
     subject: str = Form(...),
     files: list[UploadFile] = File(default=[]),
-    db: Session = Depends(get_db),
     student: AuthenticatedStudent = Depends(get_current_student),
 ):
     """Ingest user-uploaded PDFs and discover public past exam papers for
@@ -55,7 +53,7 @@ async def ingest_documents(
         ingest_file_paths=saved_paths,
     )
 
-    graph = build_graph(db=db, upload_temp_dir=settings.upload_dir)
+    graph = build_graph(upload_temp_dir=settings.upload_dir)
     try:
         result = await graph.ainvoke(state)
     except Exception as exc:

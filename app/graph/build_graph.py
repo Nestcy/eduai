@@ -13,7 +13,6 @@ from __future__ import annotations
 from functools import partial
 
 from langgraph.graph import END, StateGraph
-from sqlalchemy.orm import Session
 
 from app.agents.curriculum_agent import curriculum_agent_node
 from app.agents.flashcard_agent import flashcard_agent_node
@@ -26,22 +25,23 @@ from app.models.state import GraphState
 
 
 def build_graph(
-    db: Session,
     upload_temp_dir: str,
     exam_date_str: str | None = None,
     daily_minutes: int = 60,
     num_flashcards: int = 15,
     export_pdf: bool = True,
 ):
-    """Compile and return the LangGraph app. Bound dependencies (DB session,
-    file paths, request-specific params) are injected via `functools.partial`
-    so agent node signatures stay simple and independently testable.
+    """Compile and return the LangGraph app. Bound dependencies (file paths,
+    request-specific params) are injected via `functools.partial` so agent
+    node signatures stay simple and independently testable. Railway is a
+    stateless AI service -- there is no DB session here; every agent gets
+    everything it needs from the request payload / GraphState.
     """
     graph = StateGraph(GraphState)
 
     graph.add_node("supervisor", supervisor_node)
     graph.add_node("curriculum_agent", curriculum_agent_node)
-    graph.add_node("retrieval_ingest_agent", partial(retrieval_ingest_node, db=db, upload_temp_dir=upload_temp_dir))
+    graph.add_node("retrieval_ingest_agent", partial(retrieval_ingest_node, upload_temp_dir=upload_temp_dir))
     graph.add_node("tutor_agent", tutor_agent_node)
     graph.add_node(
         "study_planner_agent",

@@ -1,16 +1,15 @@
 """Reusable RAG ingestion pipeline.
 
-Any endpoint or agent can call `ingest_pdf(...)` or `ingest_web_page(...)`
-to turn a source into embedded, indexed, metadata-tracked chunks. This is
-intentionally decoupled from the LangGraph agents so it can also be used
-by offline batch scripts (e.g. bulk-loading past exam papers).
+Any endpoint or agent can call `ingest_pdf(...)` or `ingest_text_documents(...)`
+to turn a source into embedded, indexed chunks. Railway is a stateless AI
+service -- it does NOT write to Supabase Postgres. Ingestion metadata
+(what's been indexed) lives only in the vector store itself (FAISS/Chroma,
+on the Railway volume), not in a separate Postgres table.
 """
 from __future__ import annotations
 
 from langchain_core.documents import Document
-from sqlalchemy.orm import Session
 
-from app.database.repository import DocumentRepository
 from app.logging_config import logger
 from app.rag.chunking import chunk_documents, extract_text_from_pdf
 from app.rag.vectorstore import get_vectorstore_manager
@@ -25,14 +24,9 @@ def build_collection_name(country: str, board: str, grade: str, subject: str) ->
 def ingest_pdf(
     file_path: str,
     collection_name: str,
-    db: Session,
-    source_type: str = "upload",
     extra_metadata: dict | None = None,
 ) -> int:
-    """Extract, chunk, embed, and index a single PDF. Records metadata in Postgres.
-
-    Returns the number of chunks indexed.
-    """
+    """Extract, chunk, embed, and index a single PDF. Returns chunk count."""
     logger.info(f"Ingesting PDF '{file_path}' into collection '{collection_name}'")
     pages = extract_text_from_pdf(file_path)
     if extra_metadata:
@@ -44,36 +38,19 @@ def ingest_pdf(
         return 0
 
     manager = get_vectorstore_manager()
-    num_indexed = manager.add_documents(collection_name, chunks)
-
-    DocumentRepository.record_ingestion(
-        db,
-        collection_name=collection_name,
-        source_name=file_path,
-        source_type=source_type,
-        num_chunks=num_indexed,
-    )
-    return num_indexed
+    return manager.add_documents(collection_name, chunks)
 
 
 def ingest_text_documents(
     documents: list[Document],
     collection_name: str,
-    db: Session,
-    source_name: str,
-    source_type: str = "web",
 ) -> int:
     """Chunk and index already-extracted text (e.g. from a Firecrawl scrape)."""
     chunks = chunk_documents(documents)
     if not chunks:
         return 0
     manager = get_vectorstore_manager()
-    num_indexed = manager.add_documents(collection_name, chunks)
-    DocumentRepository.record_ingestion(
-        db, collection_name=collection_name, source_name=source_name,
-        source_type=source_type, num_chunks=num_indexed,
-    )
-    return num_indexed
+    return manager.add_documents(collection_name, chunks)
 
 
 def retrieve(collection_name: str, query: str, k: int | None = None):

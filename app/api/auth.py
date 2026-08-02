@@ -1,15 +1,14 @@
-"""Verifies Supabase Auth JWTs on incoming requests and extracts the
-authenticated user's id (`sub` claim), so route handlers never trust a
-client-supplied `student_id` for anything that reads/writes that
-student's data.
+"""Verifies Supabase Auth JWTs on incoming requests using Supabase's public
+JWKS endpoint, and extracts the authenticated user's id (`sub` claim).
 
-Frontend contract: every authenticated request must send
-`Authorization: Bearer <supabase_access_token>` (the token from
-`supabase.auth.getSession()` on the client). Supabase signs access tokens
-with the project's JWT secret (HS256) — we verify locally without an
-extra round trip to Supabase.
+Railway holds no Supabase secrets at all -- verification uses Supabase's
+published public keys (RS256), the same trust model as any OAuth resource
+server. Frontend contract: every authenticated request must send
+`Authorization: Bearer <supabase_access_token>`.
 """
 from __future__ import annotations
+
+from functools import lru_cache
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -29,30 +28,39 @@ class AuthenticatedStudent:
         self.email = email
 
 
+@lru_cache
+def _get_jwks_client() -> jwt.PyJWKClient:
+    """Cached JWKS client -- fetches and caches Supabase's public signing keys."""
+    settings = get_settings()
+    return jwt.PyJWKClient(settings.supabase_jwks_url)
+
+
 def get_current_student(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
 ) -> AuthenticatedStudent:
-    """FastAPI dependency: verify the bearer token and return the caller's identity.
+    """FastAPI dependency: verify the bearer token against Supabase's JWKS
+    endpoint and return the caller's identity.
 
     Raises 401 for missing/invalid/expired tokens. Use as:
         student: AuthenticatedStudent = Depends(get_current_student)
-    and use `student.student_id` instead of any client-supplied id.
     """
     settings = get_settings()
-    if not settings.supabase_jwt_secret:
-        logger.error("SUPABASE_JWT_SECRET is not configured")
-        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Auth is not configured on the server")
-
     token = credentials.credentials
+
     try:
+        signing_key = _get_jwks_client().get_signing_key_from_jwt(token)
         payload = jwt.decode(
             token,
-            settings.supabase_jwt_secret,
-            algorithms=["HS256"],
-            audience="authenticated",
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=settings.supabase_audience,
+            issuer=settings.supabase_issuer,
         )
     except jwt.ExpiredSignatureError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token has expired")
+    except jwt.PyJWKClientError as exc:
+        logger.error(f"Could not fetch/match Supabase JWKS: {exc}")
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Auth verification is misconfigured")
     except jwt.InvalidTokenError as exc:
         logger.warning(f"JWT verification failed: {exc}")
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid authentication token")

@@ -3,9 +3,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
 
-from app.api.deps import AuthenticatedStudent, get_current_student, get_db, get_settings
+from app.api.deps import AuthenticatedStudent, get_current_student, get_settings
 from app.graph.build_graph import build_graph
 from app.logging_config import logger
 from app.models.schemas import FlashcardRequest, FlashcardResponse
@@ -18,7 +17,6 @@ router = APIRouter(prefix="/flashcards", tags=["flashcards"])
 @router.post("", response_model=FlashcardResponse)
 async def generate_flashcards(
     payload: FlashcardRequest,
-    db: Session = Depends(get_db),
     student: AuthenticatedStudent = Depends(get_current_student),
 ):
     """Generate flashcards for a topic from retrieved content, optionally exporting a PDF."""
@@ -35,7 +33,6 @@ async def generate_flashcards(
     )
 
     graph = build_graph(
-        db=db,
         upload_temp_dir=settings.upload_dir,
         num_flashcards=payload.num_cards,
         export_pdf=payload.export_pdf,

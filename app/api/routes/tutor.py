@@ -4,9 +4,8 @@ on-demand explainer video.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
-from app.api.deps import AuthenticatedStudent, get_current_student, get_db, get_settings
+from app.api.deps import AuthenticatedStudent, get_current_student, get_settings
 from app.graph.build_graph import build_graph
 from app.logging_config import logger
 from app.models.schemas import TutorRequest, TutorResponse, VideoRequest, VideoResponse
@@ -19,7 +18,6 @@ router = APIRouter(prefix="/tutor", tags=["tutor"])
 @router.post("/ask", response_model=TutorResponse)
 async def ask_tutor(
     payload: TutorRequest,
-    db: Session = Depends(get_db),
     student: AuthenticatedStudent = Depends(get_current_student),
 ):
     """Answer a student question using the Tutor Agent, grounded in RAG context."""
@@ -38,7 +36,7 @@ async def ask_tutor(
         collection_name=collection_name,
     )
 
-    graph = build_graph(db=db, upload_temp_dir=settings.upload_dir)
+    graph = build_graph(upload_temp_dir=settings.upload_dir)
     try:
         result = await graph.ainvoke(state)
     except Exception as exc:
@@ -54,7 +52,6 @@ async def ask_tutor(
 @router.post("/video", response_model=VideoResponse)
 async def request_video(
     payload: VideoRequest,
-    db: Session = Depends(get_db),
     student: AuthenticatedStudent = Depends(get_current_student),
 ):
     """Explicit, user-triggered request for an AI-generated explainer video.
@@ -71,7 +68,7 @@ async def request_video(
         student_id=student.student_id,
     )
 
-    graph = build_graph(db=db, upload_temp_dir=settings.upload_dir)
+    graph = build_graph(upload_temp_dir=settings.upload_dir)
     try:
         result = await graph.ainvoke(state)
     except Exception as exc:

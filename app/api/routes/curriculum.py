@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
 
-from app.api.deps import AuthenticatedStudent, get_current_student, get_db, get_settings
+from app.api.deps import AuthenticatedStudent, get_current_student, get_settings
 from app.graph.build_graph import build_graph
 from app.logging_config import logger
 from app.models.schemas import CurriculumRequest
@@ -16,7 +15,6 @@ router = APIRouter(prefix="/curriculum", tags=["curriculum"])
 @router.post("")
 async def get_curriculum_summary(
     payload: CurriculumRequest,
-    db: Session = Depends(get_db),
     student: AuthenticatedStudent = Depends(get_current_student),
 ):
     """Discover and summarize the official curriculum/exam specification."""
@@ -28,7 +26,7 @@ async def get_curriculum_summary(
         grade=payload.grade,
         subject=payload.subject,
     )
-    graph = build_graph(db=db, upload_temp_dir=settings.upload_dir)
+    graph = build_graph(upload_temp_dir=settings.upload_dir)
     try:
         result = await graph.ainvoke(state)
     except Exception as exc:
