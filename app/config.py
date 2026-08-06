@@ -35,12 +35,9 @@ class Settings(BaseSettings):
     supabase_issuer: str  # e.g. https://<project-ref>.supabase.co/auth/v1
     supabase_audience: str = "authenticated"
 
-    # MCP
-    mcp_brave_search_cmd: str = ""
-    brave_api_key: str = ""
-    mcp_firecrawl_cmd: str = ""
-    firecrawl_api_key: str = ""
-    mcp_filesystem_cmd: str = ""
+    # Search / scraping — direct REST APIs, no MCP servers
+    tavily_api_key: str  # https://api.tavily.com/search
+    firecrawl_api_key: str  # https://api.firecrawl.dev/v2/scrape
 
     # Video generation (on-demand only)
     video_api_base_url: str = ""

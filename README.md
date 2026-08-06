@@ -12,12 +12,12 @@ app/
   agents/        LangGraph node implementations (one class per agent)
   graph/         LangGraph StateGraph wiring + Supervisor routing logic
   rag/           Ingestion pipeline, chunking, vector store management
-  tools/         External tool integrations (MCP: Brave Search, Firecrawl,
-                 Filesystem; ReportLab PDF export; Video-gen API client)
+  tools/         External tool integrations (Tavily search, Firecrawl scrape,
+                 ReportLab PDF export, Video-gen API client)
   api/routes/    FastAPI routers (thin — delegate to graph/agents)
   models/        Pydantic state models, API schemas
   prompts/       Centralized prompt templates per agent
-  tests/         Pytest suite (unit + integration, mocked LLM/MCP calls)
+  tests/         Pytest suite (unit + integration, mocked LLM/API calls)
 ```
 
 ## Key design decisions
@@ -30,7 +30,7 @@ app/
   self-reported scores) in the request body — it never looks anything up.
 - **Auth is JWKS-based, not a shared secret.** `app/api/auth.py` verifies
   each request's bearer token against Supabase's public JWKS endpoint
-  (RS256). No `SUPABASE_JWT_SECRET`/service key/DB URL is ever configured
+  (ES256). No `SUPABASE_JWT_SECRET`/service key/DB URL is ever configured
   on Railway — see `.env.example` for the three JWKS-related vars that
   replace them.
 - **Typed LangGraph state** (`app/models/state.py`) — every agent reads/writes a single
@@ -38,9 +38,11 @@ app/
 - **Supervisor pattern** — a router node inspects `state.intent` (set
   explicitly by the API layer per-endpoint) and dispatches to exactly one
   specialist agent per turn.
-- **MCP-first external retrieval** — the Curriculum Agent and Retrieval Agent prefer
-  MCP tools (Brave Search MCP, Firecrawl MCP, Filesystem MCP) over ad-hoc HTTP calls,
-  wrapped behind a stable `tools/mcp_client.py` interface.
+- **Direct API integrations for external retrieval** — the Curriculum Agent and Retrieval
+  Agent use Tavily (search) and Firecrawl (scrape) directly over HTTPS, wrapped behind a
+  stable `tools/search_client.py` interface so the provider can be swapped without
+  touching agent logic. No subprocess/MCP server management — the container is
+  Python-only, which keeps builds fast and the runtime simple.
 - **Video Tool Agent is strictly on-demand** — never part of the default
   supervisor routing table; only reachable via an explicit
   `intent == "video_request"` flag set by the `/tutor/video` endpoint.
@@ -61,5 +63,5 @@ uvicorn app.main:app --reload
 No architectural changes needed — the Curriculum Agent and Retrieval Agent accept
 `country`, `board`, `grade`, `subject` as free-form parameters and use them purely as
 metadata filters and search-query parameters. Adding a new board means adding a row to
-the `curriculum_sources` table (or letting Firecrawl/Brave discover it dynamically) —
+the `curriculum_sources` table (or letting Tavily/Firecrawl discover it dynamically) —
 no code changes.

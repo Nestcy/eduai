@@ -1,7 +1,7 @@
 """Retrieval Agent: builds/queries the RAG pipeline over past exam papers
 and user-uploaded PDFs. Handles two sub-flows depending on `state.intent`:
 
-- retrieval_ingest: discover public past papers (Brave MCP) + ingest any
+- retrieval_ingest: discover public past papers (Tavily search) + ingest any
   `state.ingest_file_paths` (user uploads) into the vector store.
 - otherwise (called as a sub-step by Tutor/Flashcard agents): pure query,
   populating `state.retrieved_chunks`.
@@ -26,7 +26,7 @@ async def retrieval_ingest_node(state: GraphState, upload_temp_dir: str) -> dict
     total_chunks = 0
     ingested_files: list[str] = []
 
-    # 1. Publicly available past papers via Brave Search MCP
+    # 1. Publicly available past papers via Tavily search
     try:
         urls = await find_past_paper_urls(state.country, state.curriculum_board, state.grade, state.subject)
         for url in urls:

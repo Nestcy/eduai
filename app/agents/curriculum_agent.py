@@ -1,5 +1,5 @@
 """Curriculum Agent: retrieves official curriculum/exam-spec content for a
-given country/board/grade/subject via Brave Search + Firecrawl MCP tools,
+given country/board/grade/subject via Tavily search + Firecrawl scrape,
 then summarizes it with ChatGroq.
 """
 from __future__ import annotations

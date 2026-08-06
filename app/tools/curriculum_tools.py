@@ -1,67 +1,43 @@
 """Tools for discovering and scraping official curriculum / exam board
-documents, built on top of the Brave Search MCP and Firecrawl MCP servers.
+documents, using Tavily for search and Firecrawl for scraping.
 
-Flow: Brave Search MCP finds candidate official URLs -> Firecrawl MCP
-scrapes each page to clean markdown/text -> caller (Curriculum Agent)
-turns that into LangChain Documents for ingestion or direct summarization.
+Flow: Tavily finds candidate official URLs -> Firecrawl scrapes each page
+to clean markdown -> caller (Curriculum Agent) summarizes or ingests it.
 """
 from __future__ import annotations
 
-import json
-
-from app.config import get_settings
 from app.logging_config import logger
-from app.tools.mcp_client import get_mcp_client
-
-settings = get_settings()
+from app.tools.search_client import firecrawl_scrape, tavily_search
 
 
 async def search_official_curriculum_sources(
     country: str, curriculum_board: str, grade: str, subject: str, num_results: int = 5
 ) -> list[dict]:
-    """Use Brave Search MCP to find likely official curriculum/exam-spec URLs.
+    """Search for likely official curriculum/exam-spec URLs via Tavily.
 
     Returns a list of {"title", "url", "snippet"} dicts. Results are not
-    guaranteed authoritative — the Curriculum Agent should prefer domains
-    matching the known exam board (e.g. cambridgeinternational.org,
-    aqa.org.uk, ecolebooks... ) and let the LLM sanity-check relevance.
+    guaranteed authoritative -- the Curriculum Agent should prefer domains
+    matching the known exam board and let the LLM sanity-check relevance.
     """
     query = f"{country} {curriculum_board} {grade} {subject} official syllabus exam specification PDF"
-    env = {"BRAVE_API_KEY": settings.brave_api_key} if settings.brave_api_key else None
-
-    async with get_mcp_client("brave_search", env=env) as client:
-        raw = await client.call_tool("brave_web_search", {"query": query, "count": num_results})
-
-    results: list[dict] = []
     try:
-        parsed = json.loads(raw)
-        for item in parsed if isinstance(parsed, list) else parsed.get("results", []):
-            results.append(
-                {
-                    "title": item.get("title", ""),
-                    "url": item.get("url", ""),
-                    "snippet": item.get("description", ""),
-                }
-            )
-    except (json.JSONDecodeError, AttributeError):
-        logger.warning("Brave Search MCP returned non-JSON payload; falling back to raw text")
-        results.append({"title": "search_result", "url": "", "snippet": raw})
+        results = await tavily_search(query, max_results=num_results)
+    except Exception as exc:
+        logger.error(f"Tavily search failed for curriculum sources: {exc}")
+        return []
 
-    return results
+    return [{"title": r["title"], "url": r["url"], "snippet": r["content"]} for r in results]
 
 
 async def scrape_curriculum_page(url: str) -> str:
-    """Use Firecrawl MCP to scrape a single curriculum/exam-board page to markdown."""
-    env = {"FIRECRAWL_API_KEY": settings.firecrawl_api_key} if settings.firecrawl_api_key else None
-    async with get_mcp_client("firecrawl", env=env) as client:
-        content = await client.call_tool("firecrawl_scrape", {"url": url, "formats": ["markdown"]})
-    return content
+    """Scrape a single curriculum/exam-board page to markdown via Firecrawl."""
+    return await firecrawl_scrape(url)
 
 
 async def discover_and_scrape_curriculum(
     country: str, curriculum_board: str, grade: str, subject: str, max_pages: int = 3
 ) -> list[dict]:
-    """End-to-end: search -> scrape top candidate pages -> return [{url, markdown}]."""
+    """End-to-end: search -> scrape top candidate pages -> return [{url, title, markdown}]."""
     candidates = await search_official_curriculum_sources(country, curriculum_board, grade, subject)
     pages: list[dict] = []
     for candidate in candidates[:max_pages]:

@@ -1,8 +1,8 @@
 # Version ranges below were verified with `pip install --dry-run` to resolve
-# without conflicts, staying within the LangChain 0.3.x / MCP 1.x API
-# surface the agent code (app/agents/*, app/tools/mcp_client.py) targets.
-# Do not pin exact versions without re-checking — LangChain 0.3.4 and
-# langchain-core 0.3.10 (an earlier pin here) were mutually incompatible,
+# without conflicts, staying within the LangChain 0.3.x API surface the
+# agent code (app/agents/*) targets. Do not pin exact versions without
+# re-checking — LangChain 0.3.4 and langchain-core 0.3.10 (an earlier pin
+# here) were mutually incompatible; keep them within the ranges below.
 
 fastapi>=0.110,<0.116
 uvicorn[standard]>=0.30,<0.31
@@ -27,8 +27,7 @@ pytesseract>=0.3.13,<0.4
 pillow>=10.4,<11.0
 
 
-# Tools / MCP
-mcp>=1.0,<2.0
+# Tools
 reportlab>=4.2,<4.3
 httpx>=0.27,<0.28
 pyjwt[crypto]>=2.9,<3.0

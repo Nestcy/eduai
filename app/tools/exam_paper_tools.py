@@ -1,39 +1,29 @@
 """Discover publicly available past exam papers (PDFs) for the Retrieval
-Agent, using Brave Search MCP to locate candidate PDF URLs and Firecrawl
-MCP to fetch them for download prior to ingestion.
+Agent, using Tavily to locate candidate PDF URLs, then downloading them
+directly for ingestion.
 """
 from __future__ import annotations
 
-import json
 import os
 
 import httpx
 
-from app.config import get_settings
 from app.logging_config import logger
-from app.tools.mcp_client import get_mcp_client
-
-settings = get_settings()
+from app.tools.search_client import tavily_search
 
 
 async def find_past_paper_urls(
     country: str, curriculum_board: str, grade: str, subject: str, num_results: int = 8
 ) -> list[str]:
-    """Search for direct PDF links to past exam papers via Brave Search MCP."""
+    """Search for direct PDF links to past exam papers via Tavily."""
     query = f"{country} {curriculum_board} {grade} {subject} past exam paper filetype:pdf"
-    env = {"BRAVE_API_KEY": settings.brave_api_key} if settings.brave_api_key else None
-
-    async with get_mcp_client("brave_search", env=env) as client:
-        raw = await client.call_tool("brave_web_search", {"query": query, "count": num_results})
-
-    urls: list[str] = []
     try:
-        parsed = json.loads(raw)
-        items = parsed if isinstance(parsed, list) else parsed.get("results", [])
-        urls = [item.get("url") for item in items if item.get("url", "").lower().endswith(".pdf")]
-    except (json.JSONDecodeError, AttributeError):
-        logger.warning("Could not parse Brave Search MCP response for past papers")
-    return urls
+        results = await tavily_search(query, max_results=num_results)
+    except Exception as exc:
+        logger.warning(f"Tavily search failed for past papers: {exc}")
+        return []
+
+    return [r["url"] for r in results if r.get("url", "").lower().endswith(".pdf")]
 
 
 async def download_pdf(url: str, dest_dir: str) -> str | None:
