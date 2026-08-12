@@ -38,10 +38,15 @@ async def tavily_search(query: str, max_results: int = 5) -> list[dict]:
 
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
         resp = await client.post(TAVILY_SEARCH_URL, json=payload, headers=headers)
+        if resp.status_code >= 400:
+            logger.error(
+                f"Tavily search failed (status={resp.status_code}) for query={query!r}: {resp.text[:500]}"
+            )
         resp.raise_for_status()
         data = resp.json()
 
     results = data.get("results", [])
+    logger.info(f"Tavily search for {query!r} returned {len(results)} results")
     return [
         {
             "title": r.get("title", ""),
@@ -68,6 +73,10 @@ async def firecrawl_scrape(url: str) -> str:
 
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
         resp = await client.post(FIRECRAWL_SCRAPE_URL, json=payload, headers=headers)
+        if resp.status_code >= 400:
+            logger.error(
+                f"Firecrawl scrape failed (status={resp.status_code}) for url={url!r}: {resp.text[:500]}"
+            )
         resp.raise_for_status()
         data = resp.json()
 

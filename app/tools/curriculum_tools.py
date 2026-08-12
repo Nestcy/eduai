@@ -23,8 +23,11 @@ async def search_official_curriculum_sources(
     try:
         results = await tavily_search(query, max_results=num_results)
     except Exception as exc:
-        logger.error(f"Tavily search failed for curriculum sources: {exc}")
+        logger.error(f"Tavily search failed for curriculum sources (query={query!r}): {exc}")
         return []
+
+    if not results:
+        logger.warning(f"Tavily returned zero results for curriculum query: {query!r}")
 
     return [{"title": r["title"], "url": r["url"], "snippet": r["content"]} for r in results]
 

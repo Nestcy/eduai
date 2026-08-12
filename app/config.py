@@ -17,8 +17,11 @@ class Settings(BaseSettings):
     groq_model: str  # required, no default — must be set via env (e.g. GROQ_MODEL=llama-3.3-70b-versatile)
     groq_temperature: float = 0.2
 
-    # Embeddings / RAG
-    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    # Embeddings / RAG — Google Gemini embeddings API (free tier), not
+    # OpenAI (billed) and not self-hosted sentence-transformers (was slow/
+    # memory-heavy on Railway's CPU-only, GPU-less environment).
+    google_api_key: str  # required, no default — used only for embeddings
+    embedding_model: str = "gemini-embedding-001"
     vector_store_backend: str = "chroma"  # "faiss" | "chroma"
     vector_store_dir: str = "./data/vectorstore"
     chunk_size: int = 1000

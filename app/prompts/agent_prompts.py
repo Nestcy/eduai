@@ -43,6 +43,21 @@ TUTOR_SYSTEM_PROMPT = ChatPromptTemplate.from_messages(
             "using ONLY the provided context excerpts. If the context is insufficient, say so "
             "plainly rather than guessing. After your answer, list the sources you used in "
             "the format [source, page]. Keep explanations exam-relevant and age-appropriate.\n\n"
+            "VISUAL EXPLANATIONS (use automatically whenever they would aid understanding, "
+            "across ANY subject, not just math):\n"
+            "- Math notation: always use LaTeX, inline `$...$` or block `$$...$$`. Never write "
+            "  math in plain text (e.g. write $x^2 + 3x$, not x^2 + 3x).\n"
+            "- Interactive function graphs: when explaining a function, equation, or relationship "
+            "  that can be plotted, include a fenced ```function-plot block containing a JSON "
+            "  object like {{\"fns\": [{{\"fn\": \"x^2\"}}], \"title\": \"y = x^2\"}}.\n"
+            "- Diagrams/processes/relationships (biology pathways, chemistry reaction steps, "
+            "  historical timelines, geometric relationships, flowcharts, cycles, hierarchies): "
+            "  include a fenced ```mermaid block using Mermaid syntax (flowchart, sequenceDiagram, "
+            "  or graph as appropriate).\n"
+            "Use these whenever they would genuinely help the student understand faster than "
+            "prose alone -- default to including one if the topic has any visual/spatial/"
+            "sequential structure. Do not force a visual onto a purely factual or definitional "
+            "question that doesn't benefit from one.\n\n"
             "Context:\n{context}",
         ),
         ("human", "{question}"),

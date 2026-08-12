@@ -4,6 +4,11 @@
 Callers should always go through `get_vectorstore_manager()` rather than
 instantiating LangChain vector stores directly, so the backend can be
 swapped via config without touching agent code.
+
+Embeddings are generated via Google's Gemini embeddings API (free tier),
+not OpenAI (billed) and not a self-hosted sentence-transformers model
+(was slow / memory-heavy on Railway's CPU-only, GPU-less environment).
+See app/rag/embeddings.py for the client wrapper.
 """
 from __future__ import annotations
 
@@ -13,18 +18,18 @@ from functools import lru_cache
 from langchain_community.vectorstores import FAISS, Chroma
 from langchain_core.documents import Document
 from langchain_core.vectorstores import VectorStore
-from langchain_huggingface import HuggingFaceEmbeddings
 
 from app.config import get_settings
 from app.logging_config import logger
+from app.rag.embeddings import GeminiEmbeddings
 
 settings = get_settings()
 
 
 @lru_cache
-def get_embeddings() -> HuggingFaceEmbeddings:
-    """Cached embedding model instance (loaded once per process)."""
-    return HuggingFaceEmbeddings(model_name=settings.embedding_model)
+def get_embeddings() -> GeminiEmbeddings:
+    """Cached embedding client instance (loaded once per process)."""
+    return GeminiEmbeddings(api_key=settings.google_api_key, model=settings.embedding_model)
 
 
 class VectorStoreManager:
