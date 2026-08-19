@@ -1,0 +1,6 @@
+{
+  "name": "EduAI Platform",
+  "description": "Multi-agent educational AI platform with RAG tutoring, personalized study planning, flashcards, curriculum discovery, and video explainers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
