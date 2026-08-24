@@ -23,16 +23,23 @@ import {
   HelpCircle,
   Cpu,
   BookOpen,
-  ArrowRight
+  ArrowRight,
+  Clock,
+  ShieldCheck,
+  Layers
 } from 'lucide-react';
 import { GlobalCurriculumPicker } from './GlobalCurriculumPicker';
-import { IngestedDocument, IngestedChunk, UploadedFileItem, SearchResultChunk } from '../types';
+import { IngestedDocument, IngestedChunk, UploadedFileItem, SearchResultChunk, IngestionJobStatus } from '../types';
 
 // Code-configured optimal RAG Vector & Chunking Parameters
 const DEFAULT_CHUNK_SIZE = 800;
 const DEFAULT_CHUNK_OVERLAP = 100;
 
-export const IngestionView: React.FC = () => {
+interface IngestionViewProps {
+  onNavigate?: (tab: string) => void;
+}
+
+export const IngestionView: React.FC<IngestionViewProps> = ({ onNavigate }) => {
   const [country, setCountry] = useState('Global Standard (Universal)');
   const [board, setBoard] = useState('Cambridge IGCSE / A-Level');
   const [grade, setGrade] = useState('Grade 12');
@@ -52,12 +59,13 @@ export const IngestionView: React.FC = () => {
 
   // Submission & Loading State
   const [isLoading, setIsLoading] = useState(false);
+  const [activeJob, setActiveJob] = useState<IngestionJobStatus | null>(null);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
   // Vector Store Stats & Documents
   const [documents, setDocuments] = useState<IngestedDocument[]>([]);
-  const [totalChunks, setTotalChunks] = useState(6);
+  const [totalChunks, setTotalChunks] = useState(0);
 
   // Document Inspection Modal State
   const [inspectingDoc, setInspectingDoc] = useState<IngestedDocument | null>(null);
@@ -76,7 +84,7 @@ export const IngestionView: React.FC = () => {
       if (res.ok) {
         const data = await res.json();
         setDocuments(data.documents || []);
-        setTotalChunks(data.totalChunks || 6);
+        setTotalChunks(data.totalChunks || 0);
       }
     } catch (e) {
       console.warn('Failed to load documents list:', e);
@@ -222,14 +230,48 @@ export const IngestionView: React.FC = () => {
     setUploadedFiles(prev => prev.filter(f => f.id !== id));
   };
 
-  // Execute Document & File Ingestion
+  // Execute Document & File Ingestion with Background Polling & 90s Retry Awareness
   const handleExecuteIngestion = async () => {
     setIsLoading(true);
     setSuccessMsg('');
     setErrorMsg('');
 
+    const generatedJobId = `job-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    
+    // Setup initial active job state
+    setActiveJob({
+      jobId: generatedJobId,
+      status: 'processing',
+      currentStep: 1,
+      totalSteps: ingestMode === 'files' ? uploadedFiles.length : 1,
+      currentPage: 1,
+      totalPages: 1,
+      activeModel: 'qwen/qwen3.6-27b',
+      retryCountdown: 0,
+      chunksAdded: 0,
+      fileName: ingestMode === 'files' ? uploadedFiles[0]?.name || 'Document' : (title || 'Study Notes'),
+      message: 'Initializing OCR pipeline with Qwen 27B Vision and step chunking...'
+    });
+
+    // Start background status poller
+    const poller = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/ingest/status/${generatedJobId}`);
+        if (res.ok) {
+          const jobData = await res.json();
+          setActiveJob(jobData);
+          if (jobData.chunksAdded > 0) {
+            setTotalChunks(prev => Math.max(prev, jobData.chunksAdded));
+          }
+        }
+      } catch (err) {
+        // Poll error ignored
+      }
+    }, 1200);
+
     try {
       const payload: any = {
+        jobId: generatedJobId,
         country,
         curriculum_board: board,
         grade,
@@ -242,6 +284,8 @@ export const IngestionView: React.FC = () => {
         if (uploadedFiles.length === 0) {
           setErrorMsg('Please upload at least one file before indexing.');
           setIsLoading(false);
+          clearInterval(poller);
+          setActiveJob(null);
           return;
         }
 
@@ -249,6 +293,8 @@ export const IngestionView: React.FC = () => {
         if (stillReading) {
           setErrorMsg('Files are still being read in the browser. Please wait a moment and click Ingest again.');
           setIsLoading(false);
+          clearInterval(poller);
+          setActiveJob(null);
           return;
         }
 
@@ -263,6 +309,8 @@ export const IngestionView: React.FC = () => {
         if (!notesText.trim()) {
           setErrorMsg('Please paste syllabus text or notes to index.');
           setIsLoading(false);
+          clearInterval(poller);
+          setActiveJob(null);
           return;
         }
         payload.title = title.trim() || `${subject}_Study_Notes.pdf`;
@@ -274,6 +322,8 @@ export const IngestionView: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+
+      clearInterval(poller);
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
@@ -296,10 +346,16 @@ export const IngestionView: React.FC = () => {
 
       fetchDocuments();
     } catch (err: any) {
+      clearInterval(poller);
       console.error('Ingestion error:', err);
       setErrorMsg(err.message || 'Ingestion encountered an error. Please verify the document format.');
     } finally {
+      clearInterval(poller);
       setIsLoading(false);
+      // Keep completed active job banner briefly, then fade
+      setTimeout(() => {
+        setActiveJob(null);
+      }, 6000);
     }
   };
 
@@ -418,15 +474,21 @@ export const IngestionView: React.FC = () => {
             <span>RAG Vector Store & Document Ingestion</span>
           </div>
           <p className="text-xs text-slate-500 mt-1 max-w-2xl">
-            Upload official PDF syllabi, past exam marking schemes, and revision notes to ground the AI Tutor in real curriculum knowledge.
+            Upload official PDF syllabi, books, and past exam marking schemes. Scanned pages are transcribed via <span className="font-semibold text-slate-700">Qwen 3.6 27B Vision</span> with automated 90-second background rate-limit recovery and stepped book embedding.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2.5 bg-blue-50 px-4 py-2 rounded-xl border border-blue-200 text-xs">
-            <HardDrive className="w-4 h-4 text-blue-600" />
-            <span className="text-blue-800 font-medium">Vector Index:</span>
-            <span className="font-bold text-blue-950">{totalChunks} Chunks Active</span>
+          <div className="flex items-center gap-2.5 bg-blue-50 px-3.5 py-1.5 rounded-xl border border-blue-200 text-xs">
+            <Cpu className="w-4 h-4 text-blue-600" />
+            <span className="text-blue-800 font-medium">OCR Engine:</span>
+            <span className="font-bold text-blue-950">Qwen 27B (Groq)</span>
+          </div>
+
+          <div className="flex items-center gap-2.5 bg-emerald-50 px-3.5 py-1.5 rounded-xl border border-emerald-200 text-xs">
+            <HardDrive className="w-4 h-4 text-emerald-600" />
+            <span className="text-emerald-800 font-medium">Vector Index:</span>
+            <span className="font-bold text-emerald-950">{totalChunks} Chunks</span>
           </div>
 
           <button
@@ -439,6 +501,81 @@ export const IngestionView: React.FC = () => {
         </div>
       </div>
 
+      {/* Live Active Job / 90s Rate Limit Cooldown Tracker */}
+      {activeJob && (
+        <div className={`p-4 rounded-2xl border transition-all space-y-3 ${
+          activeJob.status === 'waiting_retry'
+            ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-sm'
+            : activeJob.status === 'completed'
+            ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+            : 'bg-blue-50 border-blue-200 text-blue-900'
+        }`}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {activeJob.status === 'waiting_retry' ? (
+                <Clock className="w-5 h-5 text-amber-600 animate-spin shrink-0" />
+              ) : activeJob.status === 'completed' ? (
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              ) : (
+                <RefreshCw className="w-5 h-5 text-blue-600 animate-spin shrink-0" />
+              )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-xs">
+                    {activeJob.status === 'waiting_retry'
+                      ? 'Groq Rate Limit Protection (90s Background Cooldown Active)'
+                      : activeJob.status === 'completed'
+                      ? 'Document Embedding Completed'
+                      : 'Stepped Book Embedding & OCR in Progress'}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md font-mono font-bold bg-white/80 border border-current">
+                    Model: {activeJob.activeModel || 'qwen/qwen3.6-27b'}
+                  </span>
+                </div>
+                <p className="text-[11px] opacity-90 mt-0.5 truncate">{activeJob.message}</p>
+              </div>
+            </div>
+
+            <div className="text-right shrink-0">
+              {activeJob.status === 'waiting_retry' && (
+                <span className="px-3 py-1 bg-amber-200/80 text-amber-950 font-bold text-xs rounded-xl font-mono">
+                  Resuming in {activeJob.retryCountdown}s
+                </span>
+              )}
+              {activeJob.status === 'processing' && (
+                <span className="px-2.5 py-1 bg-blue-200/60 text-blue-950 font-semibold text-[11px] rounded-lg">
+                  Step {activeJob.currentStep || 1} / {activeJob.totalSteps || 1}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Progress Visual Bar */}
+          {activeJob.status === 'waiting_retry' ? (
+            <div className="space-y-1">
+              <div className="w-full bg-amber-200/70 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="bg-amber-600 h-full rounded-full transition-all duration-1000"
+                  style={{ width: `${Math.max(5, Math.round(((90 - (activeJob.retryCountdown || 0)) / 90) * 100))}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-amber-700">
+                Groq per-minute token/request limit encountered. Waiting in background to let the quota refresh, then resuming OCR automatically without losing progress.
+              </p>
+            </div>
+          ) : (
+            <div className="w-full bg-blue-200/60 h-1.5 rounded-full overflow-hidden">
+              <div 
+                className="bg-blue-600 h-full rounded-full transition-all duration-300"
+                style={{ 
+                  width: `${activeJob.totalPages ? Math.round(((activeJob.currentPage || 1) / activeJob.totalPages) * 100) : 50}%` 
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: File Upload & Ingestion Pipeline (7 Cols) */}
         <div className="lg:col-span-7 space-y-6">
@@ -448,9 +585,10 @@ export const IngestionView: React.FC = () => {
                 <Upload className="w-4 h-4 text-blue-600" />
                 <span>Ingest Curriculum & Study Files</span>
               </div>
-              <span className="text-[10px] px-2.5 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-md border border-emerald-200">
-                Live Vectorizer
-              </span>
+              <div className="flex items-center gap-1.5 text-[10px] px-2.5 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-md border border-emerald-200">
+                <ShieldCheck className="w-3 h-3" />
+                <span>Rate-Limit Protected</span>
+              </div>
             </div>
 
             {/* Target Curriculum Grounding Metadata */}
@@ -483,7 +621,7 @@ export const IngestionView: React.FC = () => {
                 }`}
               >
                 <Upload className="w-3.5 h-3.5" />
-                <span>Upload Files (PDF / Docs)</span>
+                <span>Upload Files (PDF / Books / Docs)</span>
               </button>
               <button
                 type="button"
@@ -543,7 +681,7 @@ export const IngestionView: React.FC = () => {
                       Drag and drop study files here, or <span className="text-blue-600 underline">browse files</span>
                     </p>
                     <p className="text-[11px] text-slate-500">
-                      Supports PDF, Markdown (.md), Plain Text (.txt), Word (.docx), CSV, JSON
+                      Supports Multi-Page PDF Books, Markdown (.md), Plain Text (.txt), Word (.docx), CSV, JSON
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
@@ -580,7 +718,7 @@ export const IngestionView: React.FC = () => {
                             <div className="min-w-0">
                               <p className="font-bold text-slate-900 truncate">{item.name}</p>
                               <p className="text-[11px] text-slate-500">
-                                {formatBytes(item.size)} • {item.extractedChars ? `${item.extractedChars.toLocaleString()} chars` : 'Processing'}
+                                {formatBytes(item.size)} • {item.extractedChars ? `${item.extractedChars.toLocaleString()} chars` : 'Ready'}
                               </p>
                             </div>
                           </div>
@@ -724,9 +862,11 @@ export const IngestionView: React.FC = () => {
                 <Cpu className="w-4 h-4 text-blue-200" />
                 <span>
                   {isLoading
-                    ? 'Extracting & Indexing Vectors...'
+                    ? (activeJob?.status === 'waiting_retry'
+                        ? `Rate Limit Cooldown (${activeJob.retryCountdown}s)...`
+                        : 'Embedding Chunks via Qwen 27B...')
                     : ingestMode === 'files'
-                    ? `Index ${uploadedFiles.length} File${uploadedFiles.length > 1 ? 's' : ''} into Vector Store`
+                    ? `Index & Embed ${uploadedFiles.length} File${uploadedFiles.length > 1 ? 's' : ''} (Qwen 27B Vision)`
                     : 'Index Content for Tutor RAG'}
                 </span>
               </button>
@@ -865,24 +1005,40 @@ export const IngestionView: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100 gap-1">
                       <button
                         type="button"
-                        onClick={() => handleInspectDocument(doc)}
-                        className="text-[11px] text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1 cursor-pointer"
+                        onClick={() => {
+                          localStorage.setItem('eduai_flashcard_doc', doc.title);
+                          localStorage.setItem('eduai_flashcard_source', 'uploaded_material');
+                          if (onNavigate) onNavigate('flashcards');
+                        }}
+                        title="Generate Flashcards strictly from this RAG material"
+                        className="text-[11px] text-emerald-700 hover:text-emerald-800 font-bold flex items-center gap-1 cursor-pointer bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200 transition-colors"
                       >
-                        <Eye className="w-3 h-3" />
-                        <span>Inspect Chunks</span>
+                        <Layers className="w-3 h-3 text-emerald-600" />
+                        <span>Flashcards</span>
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteDocument(doc)}
-                        className="text-[11px] text-red-500 hover:text-red-700 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        <span>Remove</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleInspectDocument(doc)}
+                          className="text-[11px] text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>Chunks</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDocument(doc)}
+                          className="text-[11px] text-red-500 hover:text-red-700 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Remove</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))

@@ -28,6 +28,17 @@ export interface Flashcard {
   answer: string;
   topic?: string;
   source?: string;
+  difficulty?: 'Foundational' | 'Intermediate' | 'Mastery' | 'Exam-Trap' | string;
+  tutor_tip?: string;
+  key_formula?: string;
+  cognitive_level?: 'Recall' | 'Application' | 'Calculation' | 'Conceptual Analysis' | string;
+}
+
+export interface StudentSubjectProfile {
+  subject: string;
+  masteryScore: number; // 0..100
+  lastAssessed?: string;
+  notes?: string;
 }
 
 export interface CurriculumTopic {
@@ -127,4 +138,20 @@ export interface SearchResultChunk {
   content: string;
   charCount: number;
   tokenEstimate: number;
+}
+
+export interface IngestionJobStatus {
+  jobId: string;
+  status: 'idle' | 'processing' | 'waiting_retry' | 'completed' | 'error';
+  currentStep: number;
+  totalSteps: number;
+  currentPage: number;
+  totalPages: number;
+  activeModel: string;
+  retryCountdown: number;
+  chunksAdded: number;
+  fileName: string;
+  message: string;
+  logs?: string[];
+  updatedAt?: string;
 }

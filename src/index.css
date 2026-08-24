@@ -1,25 +1,213 @@
 @import "tailwindcss";
 
+:root {
+  --bg: #0A0A0B;
+  --surface: #121214;
+  --ink: #FFFFFF;
+  --accent: #D4AF37;
+  --terracotta: #C15B3A;
+  --panel-border: 1px solid rgba(255, 255, 255, 0.1);
+  --ink-faint: rgba(255, 255, 255, 0.1);
+}
+
 @layer base {
   body {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .font-syne {
+    font-family: 'Syne', sans-serif;
+  }
+
+  code, pre, .font-mono-tech, label, .label-mono {
+    font-family: 'JetBrains Mono', monospace;
   }
 }
 
-/* Custom scrollbar */
+/* Custom Deep Industrial Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #0a0a0b;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
+  background: var(--terracotta);
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--accent);
+}
+
+::selection { 
+  background: var(--accent); 
+  color: var(--bg); 
+}
+
+/* Deep Industrial Custom Components */
+.hero-banner-industrial {
+  background: linear-gradient(to right, #1a100d, #0d121d);
+  border-bottom: 1px solid var(--ink-faint);
+  position: relative;
+}
+
+.hero-banner-industrial::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--ink-faint) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.badge-industrial {
+  display: inline-flex;
+  padding: 4px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--ink-faint);
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.section-header-industrial {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.section-header-industrial .square-indicator {
+  width: 12px;
+  height: 12px;
+  background: var(--terracotta);
+  flex-shrink: 0;
+}
+
+.section-header-industrial h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.stat-card-industrial {
+  border: 1px solid var(--ink-faint);
+  padding: 20px;
+  background: linear-gradient(135deg, #000000, #0d0d0e);
+}
+
+.stat-value-industrial {
+  font-family: 'Syne', sans-serif;
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.trigger-item-industrial {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  padding: 12px;
+  border-bottom: 1px solid var(--ink-faint);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.8);
+  transition: all 0.2s ease;
+}
+
+.trigger-item-industrial:hover {
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--accent);
+}
+
+/* Custom Tech Utilities */
+.tech-border {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tech-card {
+  background-color: #121214;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tech-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #888888;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+.tech-tag-gold {
+  border-color: rgba(212, 175, 55, 0.4);
+  color: #D4AF37;
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.tech-tag-terracotta {
+  border-color: rgba(193, 91, 58, 0.4);
+  color: #C15B3A;
+  background: rgba(193, 91, 58, 0.05);
+}
+
+.btn-primary-industrial {
+  width: 100%;
+  background: var(--accent);
+  color: #000000;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  padding: 14px 20px;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+}
+
+.btn-primary-industrial:hover {
+  background-color: #E5C158;
+}
+
+.btn-gold {
+  background-color: #D4AF37;
+  color: #000000;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.btn-gold:hover {
+  background-color: #E5C158;
+}
+
+.btn-gold-outline {
+  background: transparent;
+  color: #D4AF37;
+  border: 1px solid #D4AF37;
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.btn-gold-outline:hover {
+  background: rgba(212, 175, 55, 0.1);
 }
 
 /* Flashcard 3D flip */

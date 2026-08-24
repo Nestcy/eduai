@@ -7,16 +7,10 @@ import {
   Trash2, 
   Sparkles, 
   Clock, 
-  TrendingDown, 
-  TrendingUp, 
   CheckCircle2, 
   Circle,
-  Brain,
-  Sliders,
-  Award,
-  AlertCircle,
-  Layers,
-  Wand2
+  Wand2,
+  Calendar
 } from 'lucide-react';
 
 export const StudyPlanView: React.FC = () => {
@@ -67,7 +61,7 @@ export const StudyPlanView: React.FC = () => {
     ]
   };
 
-  const [topicList, setTopicList] = useState<TopicPerformance[]>(subjectTopicPresets['Mathematics']);
+  const [topicList, setTopicList] = useState<TopicPerformance[]>([]);
 
   const [newTopicName, setNewTopicName] = useState('');
   const [newScore, setNewScore] = useState(50);
@@ -132,61 +126,56 @@ export const StudyPlanView: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 space-y-8">
-      {/* Intro Header */}
-      <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-3xl p-8 text-white shadow-md relative overflow-hidden">
-        <div className="relative z-10 max-w-3xl space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold text-blue-200">
-            <Brain className="w-4 h-4 text-blue-300" />
-            <span>Multi-Factor Priority Optimization Engine</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Personalized Revision & Study Planner
-          </h1>
-          <p className="text-sm text-blue-100/90 leading-relaxed">
-            Our Planner Agent computes high-yield review priority combining 4 key signals:
-            <strong className="text-white"> 35% Weakness</strong>,
-            <strong className="text-white"> 25% Low Confidence</strong>,
-            <strong className="text-white"> 25% Exam Frequency Weight</strong>, and
-            <strong className="text-white"> 15% Knowledge Staleness</strong>.
-          </p>
+    <div className="flex flex-col min-h-full">
+      {/* Hero Banner (Deep Industrial Style) */}
+      <div className="hero-banner-industrial px-8 py-12">
+        <div className="badge-industrial mb-4">
+          MULTI-FACTOR OPTIMIZATION ENGINE
         </div>
+        <h1 className="font-syne text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-4 leading-none uppercase">
+          Personalized Revision & Study Planner
+        </h1>
+        <p className="max-w-3xl text-sm text-white/70 leading-relaxed font-sans">
+          Our Planner Agent computes high-yield review priority combining 4 key signals:{' '}
+          <span className="text-[#D4AF37] font-semibold">35% Weakness</span>,{' '}
+          <span className="text-[#D4AF37] font-semibold">25% Low Confidence</span>,{' '}
+          <span className="text-[#D4AF37] font-semibold">25% Exam Weight</span>, and{' '}
+          <span className="text-[#D4AF37] font-semibold">15% Staleness</span>.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Column: Topic Signals Input */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
-            <h2 className="font-bold text-slate-900 text-base flex items-center gap-2">
-              <Sliders className="w-5 h-5 text-blue-600" />
-              <span>Exam & Study Parameters</span>
-            </h2>
+      {/* Main Grid Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-px bg-white/10 flex-1">
+        {/* Left Column: Parameters & Signal Inputs */}
+        <div className="lg:col-span-5 bg-[#0A0A0B] p-8 space-y-8">
+          {/* Section: Parameters */}
+          <div className="space-y-4">
+            <div className="section-header-industrial">
+              <div className="square-indicator" />
+              <h2>Parameters</h2>
+            </div>
 
-            <div className="space-y-4 text-xs">
+            <div className="space-y-4">
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-slate-600 font-semibold">Target Subject</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block label-mono text-[10px] text-white/60 uppercase">Target Subject</label>
                   {subjectTopicPresets[subject] && (
                     <button
                       type="button"
                       onClick={() => setTopicList(subjectTopicPresets[subject])}
-                      className="text-[11px] text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1 cursor-pointer"
+                      className="label-mono text-[9px] text-[#D4AF37] hover:underline flex items-center gap-1 cursor-pointer"
                     >
                       <Wand2 className="w-3 h-3" />
-                      <span>Load {subject} Presets</span>
+                      <span>Load Presets</span>
                     </button>
                   )}
                 </div>
                 <select
                   value={subject}
                   onChange={(e) => {
-                    const newSub = e.target.value;
-                    setSubject(newSub);
-                    if (subjectTopicPresets[newSub]) {
-                      setTopicList(subjectTopicPresets[newSub]);
-                    }
+                    setSubject(e.target.value);
                   }}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500 font-medium"
+                  className="w-full bg-[#111111] border border-white/10 text-white p-3 font-sans text-sm rounded-sm focus:outline-none focus:border-[#D4AF37]"
                 >
                   {GLOBAL_SUBJECT_CATEGORIES.map((cat, idx) => (
                     <optgroup key={idx} label={cat.category}>
@@ -200,19 +189,19 @@ export const StudyPlanView: React.FC = () => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Exam Date</label>
+                  <label className="block label-mono text-[10px] text-white/60 uppercase mb-1.5">Exam Date</label>
                   <input
                     type="date"
                     value={examDate}
                     onChange={(e) => setExamDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500 font-medium"
+                    className="w-full bg-[#111111] border border-white/10 text-white p-3 font-sans text-sm rounded-sm focus:outline-none focus:border-[#D4AF37]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Daily Study (Mins)</label>
+                  <label className="block label-mono text-[10px] text-white/60 uppercase mb-1.5">Daily Study (Mins)</label>
                   <input
                     type="number"
                     min={20}
@@ -220,61 +209,60 @@ export const StudyPlanView: React.FC = () => {
                     step={10}
                     value={dailyMinutes}
                     onChange={(e) => setDailyMinutes(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500 font-medium"
+                    className="w-full bg-[#111111] border border-white/10 text-white p-3 font-sans text-sm rounded-sm focus:outline-none focus:border-[#D4AF37]"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Add Topic Card */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-            <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <Plus className="w-4 h-4 text-blue-600" />
-              <span>Add Syllabus Topic & Performance Signal</span>
-            </h3>
+          {/* Section: Performance Matrix */}
+          <div className="space-y-4">
+            <div className="section-header-industrial">
+              <div className="square-indicator" />
+              <h2>Performance Matrix</h2>
+            </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="bg-white/[0.03] border border-white/10 p-4 rounded-sm space-y-3">
               <div>
-                <label className="block text-slate-600 font-medium mb-1">Topic Name</label>
+                <label className="block label-mono text-[10px] text-white/60 uppercase mb-1">Topic Name</label>
                 <input
                   type="text"
                   placeholder="e.g. Integration by Parts"
                   value={newTopicName}
                   onChange={(e) => setNewTopicName(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800"
+                  className="w-full bg-[#111111] border border-white/10 text-white p-2.5 font-sans text-xs rounded-sm focus:outline-none focus:border-[#D4AF37]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Score: {newScore}%</label>
+                  <label className="block label-mono text-[9px] text-white/60 mb-1">Score: {newScore}%</label>
                   <input
                     type="range"
                     min={0}
                     max={100}
                     value={newScore}
                     onChange={(e) => setNewScore(Number(e.target.value))}
-                    className="w-full accent-blue-600"
+                    className="w-full accent-[#D4AF37]"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Confidence: {newConfidence}/5</label>
+                  <label className="block label-mono text-[9px] text-white/60 mb-1">Confidence: {newConfidence}/5</label>
                   <input
                     type="range"
                     min={1}
                     max={5}
                     value={newConfidence}
                     onChange={(e) => setNewConfidence(Number(e.target.value))}
-                    className="w-full accent-blue-600"
+                    className="w-full accent-[#D4AF37]"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Exam Weight: {newWeight}</label>
+                  <label className="block label-mono text-[9px] text-white/60 mb-1">Exam Weight: {newWeight}</label>
                   <input
                     type="range"
                     min={0.1}
@@ -282,19 +270,18 @@ export const StudyPlanView: React.FC = () => {
                     step={0.05}
                     value={newWeight}
                     onChange={(e) => setNewWeight(Number(e.target.value))}
-                    className="w-full accent-blue-600"
+                    className="w-full accent-[#D4AF37]"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-slate-600 font-medium mb-1">Days Since Review: {newStaleness}d</label>
+                  <label className="block label-mono text-[9px] text-white/60 mb-1">Staleness: {newStaleness}d</label>
                   <input
                     type="number"
                     min={0}
                     max={90}
                     value={newStaleness}
                     onChange={(e) => setNewStaleness(Number(e.target.value))}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg"
+                    className="w-full bg-[#111111] border border-white/10 text-white p-1.5 font-mono-tech text-xs rounded-sm"
                   />
                 </div>
               </div>
@@ -302,114 +289,100 @@ export const StudyPlanView: React.FC = () => {
               <button
                 onClick={handleAddTopic}
                 disabled={!newTopicName.trim()}
-                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-semibold text-xs transition-colors cursor-pointer disabled:opacity-40"
+                className="w-full bg-transparent text-white border border-white/10 hover:border-[#D4AF37] p-2.5 label-mono text-[10px] uppercase transition-all cursor-pointer disabled:opacity-40"
               >
                 Add Topic to Signal Matrix
               </button>
             </div>
-          </div>
 
-          {/* Current Signal Matrix */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-              <span>Configured Topics ({topicList.length})</span>
-              <span className="text-[11px] text-slate-400">Higher weight = urgent</span>
-            </div>
-
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {topicList.map((tp, idx) => (
-                <div
-                  key={idx}
-                  className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs"
-                >
-                  <div className="space-y-1">
-                    <span className="font-semibold text-slate-800 block">{tp.topic}</span>
-                    <div className="flex items-center gap-2 text-[11px] text-slate-500">
-                      <span className="bg-red-50 text-red-700 px-1.5 py-0.5 rounded border border-red-200">
-                        Score: {tp.self_reported_score}%
-                      </span>
-                      <span className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200">
-                        Conf: {tp.confidence_level}/5
-                      </span>
-                      <span>Staleness: {tp.days_since_last_review}d</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleRemoveTopic(idx)}
-                    className="p-1 text-slate-400 hover:text-red-600 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            {/* Configured Topic List */}
+            <div className="flex flex-col gap-px bg-white/10 border border-white/10 max-h-56 overflow-y-auto">
+              {topicList.length === 0 ? (
+                <div className="bg-[#0A0A0B] p-4 text-center text-xs text-white/50 space-y-1">
+                  <p>No student topics in matrix yet.</p>
+                  <p className="text-[10px] text-[#D4AF37]">Type a topic above and click "Add Topic" or click "Load Presets" to prefill sample topics.</p>
                 </div>
-              ))}
+              ) : (
+                topicList.map((tp, idx) => (
+                  <div key={idx} className="bg-[#0A0A0B] p-3 text-xs flex items-center justify-between">
+                    <div>
+                      <span className="font-sans font-medium text-white block text-xs">{tp.topic}</span>
+                      <span className="label-mono text-[9px] text-white/50">
+                        Score: {tp.self_reported_score}% | Conf: {tp.confidence_level}/5 | Weight: {tp.exam_frequency_weight}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveTopic(idx)}
+                      className="text-white/40 hover:text-[#C15B3A] transition-colors p-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
 
             <button
               onClick={handleGeneratePlan}
               disabled={isLoading || topicList.length === 0}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 mt-4"
+              className="btn-primary-industrial mt-4 flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-4 h-4 text-blue-200" />
-              <span>{isLoading ? 'Computing Optimal Schedule...' : 'Generate AI Study Schedule'}</span>
+              <Sparkles className="w-4 h-4 text-black" />
+              <span>{isLoading ? 'Computing Schedule...' : 'Generate AI Schedule'}</span>
             </button>
           </div>
         </div>
 
-        {/* Right Column: Computed Schedule & Visual Timeline */}
-        <div className="lg:col-span-7 space-y-6">
+        {/* Right Column: Schedule / Empty State */}
+        <div className="lg:col-span-7 bg-[#080809] p-8">
           {plan.length === 0 ? (
-            <div className="bg-white p-12 rounded-2xl border border-dashed border-slate-300 text-center space-y-4">
-              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto">
-                <CalendarDays className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-slate-800 text-base">No Study Plan Generated Yet</h3>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Click <strong>"Generate AI Study Schedule"</strong> to run the Planner Agent
-                and allocate your highest-priority topics spaced leading up to your exam date.
+            <div className="border border-dashed border-white/10 h-[450px] flex flex-col items-center justify-center text-center p-8 text-white/40 space-y-3">
+              <Calendar className="w-12 h-12 stroke-1 text-white/30" />
+              <h3 className="font-syne text-white text-xl uppercase font-bold">No Schedule Yet</h3>
+              <p className="text-xs max-w-sm leading-relaxed text-white/60">
+                Click the generate button to run the Priority optimization agent for your syllabus.
               </p>
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Rationale Banner */}
               {rationale && (
-                <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 shadow-xs space-y-2">
-                  <div className="flex items-center gap-2 text-xs font-bold text-blue-900">
-                    <Sparkles className="w-4 h-4 text-blue-600" />
-                    <span>Planner Agent Rationale:</span>
+                <div className="bg-[#121214] border border-[#D4AF37]/30 p-5 rounded-sm space-y-2">
+                  <div className="label-mono text-[#D4AF37] flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Agent Rationale</span>
                   </div>
-                  <p className="text-xs text-blue-800 leading-relaxed">{rationale}</p>
+                  <p className="text-xs text-white/80 leading-relaxed font-sans">{rationale}</p>
                 </div>
               )}
 
-              {/* Revision Schedule Table / Cards */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+              <div className="bg-[#121214] border border-white/10 rounded-sm overflow-hidden">
+                <div className="p-4 border-b border-white/10 bg-black/40 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4 text-blue-600" />
-                    <span className="font-bold text-sm text-slate-900">
-                      Spaced Revision Timeline ({plan.length} Sessions)
+                    <CalendarDays className="w-4 h-4 text-[#D4AF37]" />
+                    <span className="font-syne font-bold text-sm text-white uppercase">
+                      Spaced Revision Schedule ({plan.length} Sessions)
                     </span>
                   </div>
-                  <span className="text-xs text-slate-500 font-medium">
-                    {plan.filter((p) => p.completed).length}/{plan.length} Completed
+                  <span className="label-mono text-[10px] text-white/60">
+                    {plan.filter((p) => p.completed).length}/{plan.length} COMPLETED
                   </span>
                 </div>
 
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-white/5">
                   {plan.map((item, idx) => (
                     <div
                       key={idx}
                       className={`p-4 flex items-center justify-between transition-colors ${
-                        item.completed ? 'bg-emerald-50/40' : 'hover:bg-slate-50/60'
+                        item.completed ? 'bg-white/[0.02]' : 'hover:bg-white/5'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => toggleTaskCompleted(idx)}
-                          className="text-slate-400 hover:text-emerald-600 transition-colors"
+                          className="text-white/40 hover:text-[#D4AF37] transition-colors cursor-pointer"
                         >
                           {item.completed ? (
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                            <CheckCircle2 className="w-5 h-5 text-[#D4AF37]" />
                           ) : (
                             <Circle className="w-5 h-5" />
                           )}
@@ -417,16 +390,16 @@ export const StudyPlanView: React.FC = () => {
                         <div>
                           <h4
                             className={`font-semibold text-xs sm:text-sm ${
-                              item.completed ? 'line-through text-slate-400' : 'text-slate-800'
+                              item.completed ? 'line-through text-white/40' : 'text-white'
                             }`}
                           >
                             {item.topic}
                           </h4>
-                          <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
-                            <span className="font-mono">📅 {item.scheduled_date}</span>
+                          <div className="flex items-center gap-2 label-mono text-[10px] text-white/50 mt-0.5">
+                            <span>📅 {item.scheduled_date}</span>
                             <span>•</span>
                             <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-slate-400" />
+                              <Clock className="w-3 h-3 text-white/40" />
                               {item.recommended_minutes} mins
                             </span>
                           </div>
@@ -435,15 +408,15 @@ export const StudyPlanView: React.FC = () => {
 
                       <div className="text-right">
                         <span
-                          className={`text-xs px-2.5 py-1 rounded-full font-bold ${
+                          className={`label-mono text-[9px] px-2.5 py-1 border rounded-sm ${
                             item.priority_score > 0.65
-                              ? 'bg-red-50 text-red-700 border border-red-200'
+                              ? 'border-[#C15B3A] text-[#C15B3A] bg-[#C15B3A]/10'
                               : item.priority_score > 0.45
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              ? 'border-[#D4AF37] text-[#D4AF37] bg-[#D4AF37]/10'
+                              : 'border-white/20 text-white/70'
                           }`}
                         >
-                          Priority {item.priority_score}
+                          PRIORITY {item.priority_score}
                         </span>
                       </div>
                     </div>

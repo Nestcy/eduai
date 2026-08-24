@@ -1,40 +1,140 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TutorMessage, RetrievedChunk, VideoExplainerResponse } from '../types';
+import { TutorMessage, VideoExplainerResponse } from '../types';
+import { StudentSubject } from './StudentDashboardView';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { GlobalCurriculumPicker } from './GlobalCurriculumPicker';
 import { 
   Send, 
   Sparkles, 
   Video, 
   BookOpen, 
   RotateCcw, 
-  Compass, 
   Bot, 
   User, 
   Loader2,
   FileText,
-  HelpCircle,
-  TrendingUp,
   Paperclip,
-  Database,
   X,
-  Upload
+  Compass,
+  Target,
+  Layers,
+  ChevronDown,
+  ArrowRight,
+  TrendingUp,
+  AlertCircle,
+  Brain
 } from 'lucide-react';
 
 interface TutorViewProps {
+  currentUser?: { email: string; name?: string } | null;
   onOpenVideo: (video: VideoExplainerResponse) => void;
   onNavigateToIngest?: () => void;
+  onNavigate?: (tab: 'dashboard' | 'tutor' | 'flashcards') => void;
 }
 
-export const TutorView: React.FC<TutorViewProps> = ({ onOpenVideo, onNavigateToIngest }) => {
-  const [country, setCountry] = useState('Global Standard (Universal)');
-  const [board, setBoard] = useState('Cambridge IGCSE / A-Level');
-  const [grade, setGrade] = useState('Grade 12');
-  const [subject, setSubject] = useState('Mathematics');
+export const TutorView: React.FC<TutorViewProps> = ({ 
+  currentUser, 
+  onOpenVideo, 
+  onNavigateToIngest,
+  onNavigate 
+}) => {
+  // Load real student profile from localStorage or props
+  const studentName = currentUser?.name || localStorage.getItem('eduai_student_name') || 'Alexander Sterling';
+  const studentEmail = currentUser?.email || 'student@eduai.org';
+
+  const [country, setCountry] = useState<string>(() => localStorage.getItem('eduai_country') || 'United Kingdom (UK)');
+  const [board, setBoard] = useState<string>(() => localStorage.getItem('eduai_board') || 'Cambridge IGCSE / A-Level');
+  const [grade, setGrade] = useState<string>(() => localStorage.getItem('eduai_grade') || 'A-Level / Year 13');
+  const [subject, setSubject] = useState<string>(() => localStorage.getItem('eduai_subject') || 'Mathematics');
+
+  // Load real enrolled subjects with mastery and weaknesses
+  const [enrolledSubjects, setEnrolledSubjects] = useState<StudentSubject[]>(() => {
+    const saved = localStorage.getItem('eduai_real_subjects') || localStorage.getItem('eduai_subjects');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const unique: StudentSubject[] = [];
+          const seenIds = new Set<string>();
+          const seenNames = new Set<string>();
+          for (const s of parsed) {
+            if (!s || !s.name) continue;
+            const cleanName = s.name.trim();
+            const cleanId = (s.id && !seenIds.has(s.id)) ? s.id : `subj-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+            if (!seenNames.has(cleanName.toLowerCase())) {
+              seenIds.add(cleanId);
+              seenNames.add(cleanName.toLowerCase());
+              unique.push({ ...s, id: cleanId, name: cleanName });
+            }
+          }
+          if (unique.length > 0) return unique;
+        }
+      } catch {}
+    }
+    return [
+      {
+        id: 'subj-1',
+        name: 'Mathematics',
+        category: 'Pure & Applied',
+        masteryScore: 84,
+        targetGrade: 'A*',
+        syllabusProgress: 76,
+        studyMinutes: 1420,
+        examDate: '2026-05-18',
+        examPaper: 'Paper 1 & Paper 3'
+      },
+      {
+        id: 'subj-2',
+        name: 'Physics',
+        category: 'Physical Sciences',
+        masteryScore: 68,
+        targetGrade: 'A*',
+        syllabusProgress: 62,
+        studyMinutes: 980,
+        examDate: '2026-05-22',
+        examPaper: 'Paper 2 & Paper 4'
+      },
+      {
+        id: 'subj-3',
+        name: 'Chemistry',
+        category: 'Chemical Sciences',
+        masteryScore: 72,
+        targetGrade: 'A',
+        syllabusProgress: 65,
+        studyMinutes: 840,
+        examDate: '2026-05-28',
+        examPaper: 'Paper 1 & Paper 2'
+      },
+      {
+        id: 'subj-4',
+        name: 'Computer Science',
+        category: 'Computing & Logic',
+        masteryScore: 91,
+        targetGrade: 'A*',
+        syllabusProgress: 88,
+        studyMinutes: 1100,
+        examDate: '2026-06-02',
+        examPaper: 'Paper 1 & Practical'
+      }
+    ];
+  });
+
+  // Find active subject profile
+  const activeSubjectProfile = enrolledSubjects.find(s => s.name.toLowerCase() === subject.toLowerCase()) || enrolledSubjects[0] || {
+    id: 'subj-curr',
+    name: subject,
+    category: 'Curriculum Subject',
+    masteryScore: 75,
+    targetGrade: 'A*',
+    syllabusProgress: 60,
+    studyMinutes: 400,
+    examDate: '2026-05-20',
+    examPaper: 'Standard Paper'
+  };
 
   const [inputQuestion, setInputQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const [showSubjectSwitcher, setShowSubjectSwitcher] = useState(false);
 
   // Quick attached file state
   const [attachedFileName, setAttachedFileName] = useState<string | null>(null);
@@ -56,43 +156,80 @@ export const TutorView: React.FC<TutorViewProps> = ({ onOpenVideo, onNavigateToI
       .catch(() => {});
   }, []);
 
-  const [messages, setMessages] = useState<TutorMessage[]>([
+  // Adaptive initial welcome message calibrated to student profile
+  const [messages, setMessages] = useState<TutorMessage[]>(() => [
     {
       id: 'welcome-1',
       sender: 'tutor',
-      text: `### Welcome to your AI Tutor! 🎓
+      text: `### Welcome back, ${studentName}! 🎓
 
-I am your personalized **${subject}** tutor grounded directly in the **${board} (${country})** syllabus for **${grade}**.
+I am your dedicated **${subject}** Socratic AI Tutor, calibrated specifically to your **${board}** (${grade}) syllabus target: **${activeSubjectProfile.targetGrade}**.
 
-I can help you with:
-1. **Step-by-step problem solutions** with formatted LaTeX math equations
-2. **Visual concept diagrams** & biochemical/physical pathway flowcharts
-3. **Interactive function curve plots**
-4. **On-demand AI explainer videos** for difficult topics
+**Current Candidate Profile Overview:**
+- **Current Subject Mastery:** ${activeSubjectProfile.masteryScore}%
+- **Syllabus Progress:** ${activeSubjectProfile.syllabusProgress}%
 
-Ask any question below, or select one of the suggested syllabus topics!`,
+How can I assist your revision today? Feel free to ask about challenging derivations, exam mark schemes, or past paper questions!`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
 
-  const samplePrompts = [
-    {
-      subject: 'Mathematics',
-      text: 'Explain quadratic formula and discriminant with a function curve plot of y = x^2 - 5x + 6'
-    },
-    {
-      subject: 'Biology',
-      text: 'How do the light-dependent and Calvin cycle stages of photosynthesis interact with a diagram?'
-    },
-    {
-      subject: 'Physics',
-      text: 'Derive the Work-Energy theorem W_net = ΔK from Newton\'s second law with steps'
-    },
-    {
-      subject: 'Chemistry',
-      text: 'Explain Le Chatelier\'s Principle for reversible reactions at dynamic equilibrium'
+  // Update initial message when subject changes
+  const handleSelectSubject = (newSubject: string) => {
+    setSubject(newSubject);
+    localStorage.setItem('eduai_subject', newSubject);
+    setShowSubjectSwitcher(false);
+
+    const subProfile = enrolledSubjects.find(s => s.name.toLowerCase() === newSubject.toLowerCase());
+
+    setMessages([
+      {
+        id: `welcome-${Date.now()}`,
+        sender: 'tutor',
+        text: `### Switched to ${newSubject} Specialist 📐\n\nConnected to the **${board} ${grade}** syllabus for **${studentName}**, aiming for **${subProfile?.targetGrade || 'A*'}** (Current Mastery: ${subProfile?.masteryScore || 70}%).\n\nWhat concept or past-paper problem shall we explore?`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+  };
+
+  // High-yield inquiries generated for active subjects
+  const getAdaptiveSamplePrompts = () => {
+    const list: Array<{ subject: string; text: string; category: string; badge?: string }> = [];
+
+    list.push({
+      subject: subject,
+      category: 'Exam Practice',
+      badge: 'High Yield',
+      text: `Guide me step-by-step through a challenging ${board} exam-style problem in ${subject} with LaTeX steps and rationale.`
+    });
+
+    enrolledSubjects.forEach(s => {
+      if (s.name !== activeSubjectProfile.name) {
+        list.push({
+          subject: s.name,
+          category: 'Enrolled Subject',
+          text: `Explain the core concepts and common exam traps in ${s.name} (${s.targetGrade} standard).`
+        });
+      }
+    });
+
+    if (list.length < 4) {
+      list.push({
+        subject: subject,
+        category: 'Concept Proof',
+        text: `Derive the foundational principles for ${subject} under ${board} assessment guidelines.`
+      });
+      list.push({
+        subject: subject,
+        category: 'Curve Analysis',
+        text: `Plot and explain key functional graphs with critical inflection points for ${subject}.`
+      });
     }
-  ];
+
+    return list.slice(0, 6);
+  };
+
+  const adaptivePrompts = getAdaptiveSamplePrompts();
 
   const handleChatFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -167,6 +304,12 @@ Ask any question below, or select one of the suggested syllabus topics!`,
     setIsLoading(true);
 
     try {
+      // Build sliding conversation buffer memory from previous messages
+      const historyBuffer = messages.slice(-10).map(m => ({
+        sender: m.sender,
+        text: m.text
+      }));
+
       const response = await fetch('/api/tutor/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -175,7 +318,11 @@ Ask any question below, or select one of the suggested syllabus topics!`,
           country,
           curriculum_board: board,
           grade,
-          subject
+          subject,
+          student_name: studentName,
+          target_grade: activeSubjectProfile.targetGrade,
+          mastery_score: activeSubjectProfile.masteryScore,
+          history: historyBuffer
         })
       });
 
@@ -186,22 +333,21 @@ Ask any question below, or select one of the suggested syllabus topics!`,
       const data = await response.json();
 
       const tutorMsg: TutorMessage = {
-        id: `tutor-${Date.now()}`,
+        id: `msg-${Date.now() + 1}`,
         sender: 'tutor',
-        text: data.answer || 'I could not generate an answer for this question.',
+        text: data.answer || 'I could not generate an answer at this time.',
         thinking: data.thinking || undefined,
         sources: data.sources || [],
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestedVideoTopic: textToSend.slice(0, 40)
+        suggestedVideoTopic: data.suggested_video_topic
       };
 
       setMessages((prev) => [...prev, tutorMsg]);
     } catch (err: any) {
-      console.error('Tutor error:', err);
       const errorMsg: TutorMessage = {
-        id: `err-${Date.now()}`,
+        id: `msg-err-${Date.now()}`,
         sender: 'tutor',
-        text: `### ⚠️ Tutor Agent Notice\n\n${err.message || 'Unable to connect to tutor agent.'}\n\nPlease check your network connection or provide a Gemini API key in settings.`,
+        text: `### ⚠️ Tutor Agent Notice\n\n${err.message || 'Unable to connect to tutor agent.'}\n\nPlease verify your connection or inspect server logs.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -228,130 +374,218 @@ Ask any question below, or select one of the suggested syllabus topics!`,
       onOpenVideo(data);
     } catch (err) {
       console.error('Video error:', err);
-      alert('Video generation failed. Please try again.');
     } finally {
       setIsVideoLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-      {/* Left Sidebar: Curriculum Scope Selector */}
-      <aside className="w-full lg:w-80 shrink-0 space-y-5">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between text-slate-900 font-bold text-sm">
-            <div className="flex items-center gap-2">
-              <Compass className="w-4 h-4 text-blue-600" />
-              <span>Curriculum Grounding</span>
-            </div>
-            <span className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-700 font-bold rounded-md border border-blue-200">
-              Global Support
-            </span>
-          </div>
-
-          <GlobalCurriculumPicker
-            country={country}
-            setCountry={setCountry}
-            board={board}
-            setBoard={setBoard}
-            grade={grade}
-            setGrade={setGrade}
-            subject={subject}
-            setSubject={setSubject}
-          />
-        </div>
-
-        {/* Vector Grounding Index Badge & Ingest Shortcut */}
-        <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 p-4 rounded-2xl border border-blue-200/80 shadow-xs space-y-2.5">
+    <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto py-2 px-2 sm:px-4 lg:px-6">
+      
+      {/* Left Sidebar: Adaptive Student Inquiries & Syllabus Diagnostics */}
+      <aside className="w-full lg:w-80 shrink-0 space-y-4">
+        
+        {/* Adaptive High-Yield Inquiries based on Student's Real Profile */}
+        <div className="p-4 bg-[#121214] border border-[#1F1F23] rounded-sm space-y-3 shadow-xs">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-blue-900 font-bold text-xs">
-              <Database className="w-4 h-4 text-blue-600" />
-              <span>RAG Syllabus Memory</span>
+            <div className="flex items-center gap-1.5 text-xs font-mono-tech uppercase font-bold text-[#D4AF37]">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Adaptive Syllabus Drills</span>
             </div>
-            <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md">
-              {totalChunks} Chunks
+            <span className="text-[9px] font-mono-tech text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-xs border border-emerald-500/20">
+              Personalized
             </span>
           </div>
-          <p className="text-[11px] text-blue-700/80 leading-relaxed">
-            Answers are grounded in {totalIndexedDocs} active syllabus document{totalIndexedDocs !== 1 ? 's' : ''} and formula sheets.
-          </p>
-          {onNavigateToIngest && (
-            <button
-              type="button"
-              onClick={onNavigateToIngest}
-              className="w-full py-1.5 bg-white hover:bg-blue-600 hover:text-white text-blue-700 font-bold text-[11px] rounded-lg border border-blue-300 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-            >
-              <Upload className="w-3 h-3" />
-              <span>Upload More Syllabus PDFs</span>
-            </button>
-          )}
-        </div>
 
-        {/* Suggested Prompts */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>High-Yield Syllabus Inquiries</span>
-          </div>
+          <p className="text-[11px] text-white/50 leading-relaxed font-sans">
+            Calibrated to <strong className="text-white/80">{studentName}</strong>'s current <strong className="text-[#D4AF37]">{subject}</strong> performance metrics:
+          </p>
+
           <div className="space-y-2">
-            {samplePrompts.map((p, idx) => (
+            {adaptivePrompts.map((p, idx) => (
               <button
                 key={idx}
+                type="button"
                 onClick={() => {
-                  setSubject(p.subject);
+                  if (p.subject !== subject) {
+                    handleSelectSubject(p.subject);
+                  }
                   handleSendMessage(p.text);
                 }}
-                className="w-full text-left p-2.5 rounded-xl bg-slate-50 hover:bg-blue-50/70 border border-slate-200/80 hover:border-blue-300 transition-all text-xs text-slate-700 cursor-pointer group"
+                className="w-full text-left p-2.5 rounded-xs bg-[#0A0A0B] hover:bg-white/5 border border-white/10 hover:border-[#D4AF37]/50 transition-all text-xs text-white/80 cursor-pointer group"
               >
-                <span className="font-semibold text-blue-600 block mb-0.5 group-hover:underline">
-                  {p.subject}
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <span className="font-mono-tech font-bold text-[#D4AF37] text-[10px] group-hover:underline">
+                    0{idx+1} // {p.subject.toUpperCase()}
+                  </span>
+                  {p.badge && (
+                    <span className="text-[9px] font-mono-tech text-rose-400 bg-rose-500/10 px-1.5 py-0.2 rounded-xs border border-rose-500/20">
+                      {p.badge}
+                    </span>
+                  )}
+                </div>
+                <span className="line-clamp-2 text-[11px] text-white/70 group-hover:text-white leading-relaxed font-sans">
+                  {p.text}
                 </span>
-                <span className="line-clamp-2">{p.text}</span>
               </button>
             ))}
           </div>
         </div>
+
+        {/* Quick Student RAG Library Status */}
+        <div className="p-4 bg-[#121214] border border-[#1F1F23] rounded-sm space-y-2 text-xs">
+          <div className="flex items-center justify-between text-[11px] font-mono-tech text-white/60">
+            <span className="flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-blue-400" />
+              <span>Grounded Knowledge Base</span>
+            </span>
+            <span className="text-blue-400 font-bold font-mono-tech">
+              {totalIndexedDocs} Docs ({totalChunks} Chunks)
+            </span>
+          </div>
+          <p className="text-[10px] text-white/40 leading-relaxed">
+            Attach textbooks, mark schemes, or student notes directly below to ground the tutor on your class material.
+          </p>
+        </div>
+
       </aside>
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden h-[750px]">
-        {/* Chat Header */}
-        <div className="px-6 py-3.5 border-b border-slate-200 bg-slate-50/70 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
-              <Bot className="w-5 h-5" />
+      <main className="flex-1 flex flex-col bg-[#121214] rounded-sm border border-[#1F1F23] overflow-hidden min-h-[720px] shadow-sm">
+        
+        {/* Chat Header: Adaptive Student & Curriculum Status */}
+        <div className="p-4 sm:p-5 border-b border-[#1F1F23] bg-[#0A0A0B] flex flex-col gap-3.5">
+          
+          {/* Top Row: Candidate Identity, Subject Specialist & Socratic Status */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            
+            {/* Candidate & Subject Indicator */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-sm bg-[#D4AF37] text-black flex items-center justify-center font-bold shadow-xs">
+                <Bot className="w-5 h-5" />
+              </div>
+              
+              <div>
+                <div className="flex items-center gap-2 text-[10px] font-mono-tech text-white/50 uppercase tracking-wider">
+                  <span className="text-[#D4AF37] font-bold">CANDIDATE: {studentName.toUpperCase()}</span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1 text-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>Socratic Engine Active</span>
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1 text-blue-400 font-semibold bg-blue-500/10 px-1.5 py-0.2 rounded-xs border border-blue-500/20">
+                    <Brain className="w-3 h-3 text-blue-400" />
+                    <span>Buffer Memory ({messages.length} turns)</span>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 mt-0.5">
+                  <h2 className="font-syne font-extrabold text-white text-base tracking-tight">
+                    {subject} Socratic Specialist
+                  </h2>
+
+                  {/* Subject Quick Selector Dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowSubjectSwitcher(!showSubjectSwitcher)}
+                      className="px-2 py-0.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 rounded-xs font-mono-tech text-[10px] flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Switch active revision subject"
+                    >
+                      <span>Switch Subject</span>
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+
+                    {showSubjectSwitcher && (
+                      <div className="absolute left-0 mt-1.5 w-60 bg-[#121214] border border-[#1F1F23] rounded-xs shadow-xl p-1.5 z-50 space-y-1 animate-in fade-in duration-100">
+                        <div className="px-2 py-1 text-[9px] font-mono-tech uppercase text-white/40 border-b border-white/5">
+                          Select Enrolled Subject:
+                        </div>
+                        {enrolledSubjects.map((s, idx) => (
+                          <button
+                            key={s.id || `tutor-subj-${s.name}-${idx}`}
+                            type="button"
+                            onClick={() => handleSelectSubject(s.name)}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-xs text-xs font-mono-tech flex items-center justify-between transition-colors cursor-pointer ${
+                              s.name.toLowerCase() === subject.toLowerCase()
+                                ? 'bg-[#D4AF37]/20 text-[#D4AF37] font-bold'
+                                : 'text-white/70 hover:bg-white/5 hover:text-white'
+                            }`}
+                          >
+                            <span className="truncate">{s.name}</span>
+                            <span className="text-[10px] px-1.5 py-0.2 bg-white/10 rounded-xs text-white/80">
+                              {s.masteryScore}% • {s.targetGrade}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <h2 className="font-bold text-slate-900 text-sm">
-                AI Subject Specialist: {subject}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {board} • {grade} • {country} Syllabus Spec
-              </p>
+
+            {/* Right Side: Curriculum Badges & Reset */}
+            <div className="flex items-center gap-2">
+              <div className="px-2.5 py-1 bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/40 rounded-xs font-mono-tech text-[10px] font-bold uppercase tracking-wider hidden sm:inline-block">
+                {grade}
+              </div>
+              <div className="px-2.5 py-1 bg-white/5 text-white/80 border border-white/10 rounded-xs font-mono-tech text-[10px] uppercase tracking-wider hidden sm:inline-block">
+                {board.split(' ')[0]} ({country.split(' ')[0]})
+              </div>
+              
+              <button
+                type="button"
+                onClick={() =>
+                  setMessages([
+                    {
+                      id: `welcome-${Date.now()}`,
+                      sender: 'tutor',
+                      text: `Chat session reset for **${studentName}** on **${subject}** (${board} ${grade}). What topic or derivation would you like to explore?`,
+                      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    }
+                  ])
+                }
+                className="p-2 rounded-xs border border-white/10 text-white/60 hover:text-white hover:bg-white/5 text-xs flex items-center gap-1 transition-colors cursor-pointer"
+                title="Reset Conversation"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-[#D4AF37]" />
+              </button>
             </div>
+
           </div>
 
-          <button
-            onClick={() =>
-              setMessages([
-                {
-                  id: `welcome-${Date.now()}`,
-                  sender: 'tutor',
-                  text: `Chat session reset for **${subject}** (${board} ${grade}). What would you like to explore?`,
-                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                }
-              ])
-            }
-            className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 text-xs flex items-center gap-1 transition-colors"
-            title="Reset Conversation"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Reset</span>
-          </button>
+          {/* Bottom Row: Real Student Mastery Bar & Active Focus Chips */}
+          <div className="pt-2.5 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+            
+            {/* Real Mastery Progress Meter */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-[11px] font-mono-tech text-white/60">
+                <Target className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span>Subject Mastery:</span>
+                <strong className="text-white font-bold">{activeSubjectProfile.masteryScore}%</strong>
+                <span className="text-[10px] text-[#D4AF37] bg-[#D4AF37]/10 px-1.5 py-0.2 rounded-xs border border-[#D4AF37]/30">
+                  Target: {activeSubjectProfile.targetGrade}
+                </span>
+              </div>
+
+              <div className="w-24 sm:w-32 bg-white/10 rounded-full h-1.5 overflow-hidden">
+                <div 
+                  className="bg-[#D4AF37] h-full rounded-full transition-all duration-300"
+                  style={{ width: `${activeSubjectProfile.masteryScore}%` }}
+                />
+              </div>
+            </div>
+
+
+
+          </div>
+
         </div>
 
         {/* Message Thread */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 bg-[#080809]">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -361,10 +595,10 @@ Ask any question below, or select one of the suggested syllabus topics!`,
             >
               {/* Avatar */}
               <div
-                className={`w-8 h-8 rounded-xl shrink-0 flex items-center justify-center text-xs font-bold ${
+                className={`w-8 h-8 rounded-sm shrink-0 flex items-center justify-center text-xs font-bold font-mono-tech ${
                   msg.sender === 'student'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white'
+                    ? 'bg-[#C15B3A] text-white'
+                    : 'bg-[#D4AF37] text-black'
                 }`}
               >
                 {msg.sender === 'student' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
@@ -372,36 +606,42 @@ Ask any question below, or select one of the suggested syllabus topics!`,
 
               {/* Message Bubble */}
               <div
-                className={`rounded-2xl p-4 sm:p-5 shadow-xs ${
+                className={`rounded-sm p-4 sm:p-5 border ${
                   msg.sender === 'student'
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-50 border border-slate-200 text-slate-800'
+                    ? 'bg-[#C15B3A]/15 border-[#C15B3A]/40 text-white'
+                    : 'bg-[#121214] border-white/10 text-white/90 shadow-sm'
                 }`}
               >
+                <div className="font-mono-tech text-[10px] text-[#D4AF37] mb-2 flex items-center gap-3">
+                  <span>ID: {msg.sender === 'student' ? `${studentName.toUpperCase()}` : `SOCRATIC_${subject.toUpperCase()}_BOT`}</span>
+                  <span>•</span>
+                  <span>{msg.timestamp}</span>
+                </div>
+
                 {msg.sender === 'student' ? (
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap font-sans">{msg.text}</p>
                 ) : (
                   <div>
                     <MarkdownRenderer content={msg.text} thinking={msg.thinking} />
 
                     {/* Cited Sources */}
                     {msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-4 pt-3 border-t border-slate-200/80">
-                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
-                          <FileText className="w-3 h-3 text-emerald-600" />
+                      <div className="mt-4 pt-3 border-t border-white/10">
+                        <div className="text-[10px] font-mono-tech text-[#C15B3A] uppercase tracking-wider mb-2 flex items-center gap-1">
+                          <FileText className="w-3 h-3 text-[#D4AF37]" />
                           Curriculum Sources Grounding:
                         </div>
                         <div className="space-y-1.5">
                           {msg.sources.map((src, idx) => (
                             <div
                               key={idx}
-                              className="text-xs bg-white p-2 rounded-lg border border-slate-200 text-slate-600"
+                              className="text-xs bg-[#0A0A0B] p-2.5 rounded-xs border border-white/10 text-white/70 font-mono-tech"
                             >
-                              <div className="font-semibold text-slate-800 flex items-center justify-between">
+                              <div className="font-semibold text-[#D4AF37] flex items-center justify-between text-[11px]">
                                 <span>📄 {src.source}</span>
-                                {src.page && <span className="text-[10px] text-slate-400">Page {src.page}</span>}
+                                {src.page && <span className="text-[10px] text-white/40">Page {src.page}</span>}
                               </div>
-                              <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 italic">
+                              <p className="text-[11px] text-white/50 mt-1 line-clamp-2 italic font-sans">
                                 "{src.content}"
                               </p>
                             </div>
@@ -411,20 +651,21 @@ Ask any question below, or select one of the suggested syllabus topics!`,
                     )}
 
                     {/* Explainer Video Action Button */}
-                    <div className="mt-4 pt-2 flex items-center justify-between">
+                    <div className="mt-4 pt-2 flex items-center justify-between border-t border-white/5">
                       <button
-                        onClick={() => handleGenerateVideo(subject)}
+                        type="button"
+                        onClick={() => handleGenerateVideo(msg.suggestedVideoTopic || subject)}
                         disabled={isVideoLoading}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-xs text-xs font-mono-tech font-semibold transition-all cursor-pointer shadow-xs disabled:opacity-50"
                       >
                         {isVideoLoading ? (
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         ) : (
-                          <Video className="w-3.5 h-3.5 text-red-600" />
+                          <Video className="w-3.5 h-3.5 text-rose-400" />
                         )}
-                        <span>Request AI Explainer Video Lesson</span>
+                        <span>Request AI Video Lesson on {msg.suggestedVideoTopic || subject}</span>
                       </button>
-                      <span className="text-[10px] text-slate-400 font-mono">{msg.timestamp}</span>
+                      <span className="text-[10px] text-white/30 font-mono-tech">{msg.timestamp}</span>
                     </div>
                   </div>
                 )}
@@ -434,13 +675,13 @@ Ask any question below, or select one of the suggested syllabus topics!`,
 
           {isLoading && (
             <div className="flex gap-3 mr-auto max-w-xl animate-pulse">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+              <div className="w-8 h-8 rounded-sm bg-[#D4AF37] text-black flex items-center justify-center">
                 <Bot className="w-4 h-4" />
               </div>
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex items-center gap-3">
-                <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-                <span className="text-xs text-slate-600 font-medium">
-                  Tutor Agent formulating grounded answer with LaTeX math & diagrams...
+              <div className="bg-[#121214] border border-white/10 rounded-sm p-4 flex items-center gap-3">
+                <Loader2 className="w-4 h-4 text-[#D4AF37] animate-spin" />
+                <span className="text-xs text-white/70 font-medium font-sans">
+                  Socratic Tutor formulating step-by-step guidance calibrated for {studentName}...
                 </span>
               </div>
             </div>
@@ -448,16 +689,16 @@ Ask any question below, or select one of the suggested syllabus topics!`,
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 border-t border-slate-200 bg-white space-y-2">
+        <div className="p-4 border-t border-[#1F1F23] bg-[#0A0A0B] space-y-2">
           {/* Attached File Preview Tag */}
           {attachedFileName && (
-            <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 w-fit">
-              <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+            <div className="flex items-center gap-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded-xs text-xs text-blue-300 w-fit">
+              <FileText className="w-4 h-4 text-blue-400 shrink-0" />
               <span className="font-semibold truncate max-w-xs">{attachedFileName}</span>
               {isUploadingAttachment ? (
-                <span className="text-[10px] text-blue-600 animate-pulse font-medium">Extracting vectors...</span>
+                <span className="text-[10px] text-blue-400 animate-pulse font-medium">Extracting vectors...</span>
               ) : (
-                <span className="text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-md font-bold">
+                <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-xs font-bold border border-emerald-500/20">
                   Grounding Attached
                 </span>
               )}
@@ -467,7 +708,7 @@ Ask any question below, or select one of the suggested syllabus topics!`,
                   setAttachedFileName(null);
                   setAttachedFileText(null);
                 }}
-                className="text-slate-400 hover:text-red-600 p-0.5 cursor-pointer"
+                className="text-white/40 hover:text-rose-400 p-0.5 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -493,7 +734,7 @@ Ask any question below, or select one of the suggested syllabus topics!`,
               type="button"
               onClick={() => chatFileInputRef.current?.click()}
               title="Attach PDF or Study File for Instant RAG Grounding"
-              className="p-3 bg-slate-50 hover:bg-blue-50 text-slate-500 hover:text-blue-600 border border-slate-200 rounded-xl transition-colors cursor-pointer shrink-0"
+              className="p-3 bg-[#121214] hover:bg-white/10 text-white/60 hover:text-[#D4AF37] border border-white/10 rounded-xs transition-colors cursor-pointer shrink-0"
             >
               <Paperclip className="w-4 h-4" />
             </button>
@@ -503,22 +744,24 @@ Ask any question below, or select one of the suggested syllabus topics!`,
               id="tutor-question-input"
               value={inputQuestion}
               onChange={(e) => setInputQuestion(e.target.value)}
-              placeholder={`Ask any ${subject} question (e.g. formulas, mechanisms, proofs)...`}
-              className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 font-medium"
+              placeholder={`Ask any ${subject} question (e.g. formulas, mechanisms, proofs, weak topics)...`}
+              className="flex-1 px-4 py-3 bg-[#121214] border border-white/15 focus:border-[#D4AF37] rounded-xs text-sm text-white placeholder-white/40 focus:outline-hidden font-sans"
             />
 
             <button
               type="submit"
               id="tutor-send-button"
               disabled={isLoading || (!inputQuestion.trim() && !attachedFileText)}
-              className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-sm flex items-center gap-2 transition-colors disabled:opacity-50 cursor-pointer shadow-xs shrink-0"
+              className="px-5 py-3 bg-[#D4AF37] hover:bg-[#E5C158] text-black rounded-xs font-syne font-bold text-xs uppercase flex items-center gap-2 transition-colors disabled:opacity-40 cursor-pointer shrink-0"
             >
               <span>Ask Tutor</span>
               <Send className="w-4 h-4" />
             </button>
           </form>
         </div>
+
       </main>
+
     </div>
   );
 };
