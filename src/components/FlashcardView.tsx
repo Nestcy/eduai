@@ -3,7 +3,7 @@ import { Flashcard, IngestedDocument, StudentSubjectProfile } from '../types';
 import { 
   GLOBAL_SUBJECT_CATEGORIES, 
   ALL_FLAT_SUBJECTS 
-} from '../data';
+} from '../data/curriculumData';
 import { GlobalCurriculumPicker } from './GlobalCurriculumPicker';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import confetti from 'canvas-confetti';
