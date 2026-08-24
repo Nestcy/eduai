@@ -46,7 +46,7 @@ import {
   Compass
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { ALL_FLAT_SUBJECTS } from '../data/curriculumData';
+import { ALL_FLAT_SUBJECTS } from '../data';
 import { SupabaseDataService, SupabaseAuthService, StudentProfileRecord } from '../lib/supabase';
 import { GlobalCurriculumPicker } from './GlobalCurriculumPicker';
 import { IngestionView } from './IngestionView';

@@ -5,7 +5,7 @@ import {
   GLOBAL_GRADES, 
   GLOBAL_SUBJECT_CATEGORIES, 
   ALL_FLAT_SUBJECTS 
-} from '../data/curriculumData';
+} from '../data';
 import { 
   Globe, 
   BookOpen, 

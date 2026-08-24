@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { TopicPerformance, StudyPlanEntry } from '../types';
-import { GLOBAL_SUBJECT_CATEGORIES } from '../data/curriculumData';
+import { GLOBAL_SUBJECT_CATEGORIES } from '../data';
 import { 
   CalendarDays, 
   Plus, 
